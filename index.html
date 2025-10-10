@@ -59,9 +59,6 @@
     </style>
     
     <script type="module">
-        // Firebase 관련 Imports 제거
-        // 'crypto'가 없으면 polyfill이 필요하지만, 최신 브라우저에서는 보통 지원됨
-        
         // Gemini API Configuration
         const API_KEY = "AIzaSyDfpal-sPS5EeCLYrvmeVnc_sA69L_EQ8M"; // Canvas 환경에서 자동 주입됨
         const API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
@@ -70,24 +67,29 @@
 
         // Local Storage Keys
         const DEVICE_ID_KEY = 'jlpt_device_id';
-        const WORDS_KEY = 'jlpt_saved_words';
+        const WORDS_KEY = 'jlpt_saved_lists'; 
+        const FOLDERS_KEY = 'jlpt_folders'; 
         const STATS_KEY = 'jlpt_stats';
         const WRONG_WORDS_KEY = 'jlpt_wrong_words';
+        const MANUAL_WORDS_KEY = 'jlpt_manual_words'; // 새로 추가된 개별 단어 저장 키
 
         // Application State
-        let deviceId = 'loading'; // userId 대신 deviceId 사용
+        let deviceId = 'loading';
         let isAppReady = false;
-        let selectedLevel = 2; // Initial N2
-        let currentView = 'generator'; // 'generator', 'quiz', 'lists'
-        let generatedWords = []; // Currently generated word list
-        let savedWordLists = []; // Lists loaded from Local Storage
+        let selectedLevel = 2;
+        let currentView = 'generator'; 
+        let generatedWords = [];
+        let savedWordLists = []; 
+        let wordFolders = []; // 폴더 목록
+        let selectedFolderId = null; // 현재 선택된 폴더 ID
         let quizWords = [];
         let currentQuestionIndex = 0;
         let quizScore = 0;
         let quizOptions = [];
         let stats = { totalAttempts: 0, totalCorrect: 0, overallRate: 0 };
-        let wrongWords = []; // 오답 노트에 표시될 단어 목록
-        let isViewingWrongWords = false; // 현재 오답 노트 목록을 보고 있는지 여부
+        let wrongWords = []; 
+        let manualSavedWords = []; // 개별 저장 단어 목록
+        let isViewingWrongWords = false; 
 
         // UI Elements
         const appContainer = document.getElementById('app');
@@ -98,26 +100,63 @@
         const tabGenerator = document.getElementById('tab-generator');
         const tabLists = document.getElementById('tab-lists');
 
-        // --- Local Storage Functions (Firestore 대체) ---
+        // --- Core Utility: Safe Unique ID Generator ---
+        /** * UUID를 생성하거나 지원하지 않을 경우 타임스탬프와 랜덤 값을 조합하여 고유 ID를 생성합니다. 
+         * 이 함수는 crypto.randomUUID()를 안전하게 대체합니다.
+         */
+        function generateUniqueId() {
+            // 표준 crypto.randomUUID() 사용
+            if (window.crypto && window.crypto.randomUUID) {
+                return window.crypto.randomUUID();
+            }
+            // 폴백: 타임스탬프 + 랜덤 문자열 조합
+            return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+        }
+
+        // --- Local Storage Functions ---
         
         /** UUID를 생성하거나 localStorage에서 가져와 deviceId를 설정 */
         function setupDeviceId() {
             let id = localStorage.getItem(DEVICE_ID_KEY);
             if (!id) {
-                // 브라우저가 crypto를 지원하지 않을 경우 폴백
-                id = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                id = generateUniqueId(); // 안전한 ID 생성기 사용
                 localStorage.setItem(DEVICE_ID_KEY, id);
             }
             deviceId = id;
             isAppReady = true;
         }
 
-        /** 단어 목록을 localStorage에 저장 */
+        /** 폴더 목록을 localStorage에 저장 */
+        function saveFoldersToLocal() {
+            localStorage.setItem(FOLDERS_KEY, JSON.stringify(wordFolders));
+        }
+
+        /** 폴더 목록을 localStorage에서 불러오기 */
+        function loadFolders() {
+            try {
+                const data = localStorage.getItem(FOLDERS_KEY);
+                wordFolders = data ? JSON.parse(data) : [];
+                if (wordFolders.length === 0) {
+                    // 기본 폴더 생성
+                    const defaultFolderId = generateUniqueId(); // 안전한 ID 생성기 사용
+                    wordFolders.push({ id: defaultFolderId, name: '전체 단어장', createdAt: new Date().toISOString() });
+                    saveFoldersToLocal();
+                } 
+                if (!selectedFolderId) {
+                    selectedFolderId = wordFolders[0].id;
+                }
+            } catch (e) {
+                console.error("폴더 목록 로드 오류:", e);
+                wordFolders = [];
+            }
+        }
+        
+        /** 단어 목록(20개 그룹)을 localStorage에 저장 */
         function saveWordListsToLocal() {
             localStorage.setItem(WORDS_KEY, JSON.stringify(savedWordLists));
         }
         
-        /** 단어 목록을 localStorage에서 불러오기 */
+        /** 단어 목록(20개 그룹)을 localStorage에서 불러오기 */
         function loadSavedWordLists() {
             try {
                 const data = localStorage.getItem(WORDS_KEY);
@@ -125,6 +164,22 @@
             } catch (e) {
                 console.error("저장된 단어 목록 로드 오류:", e);
                 savedWordLists = [];
+            }
+        }
+
+        /** 개별 저장 단어 목록을 localStorage에 저장 */
+        function saveManualWordsToLocal() {
+            localStorage.setItem(MANUAL_WORDS_KEY, JSON.stringify(manualSavedWords));
+        }
+
+        /** 개별 저장 단어 목록을 localStorage에서 불러오기 */
+        function loadManualWords() {
+            try {
+                const data = localStorage.getItem(MANUAL_WORDS_KEY);
+                manualSavedWords = data ? JSON.parse(data) : [];
+            } catch (e) {
+                console.error("개별 단어 목록 로드 오류:", e);
+                manualSavedWords = [];
             }
         }
         
@@ -189,7 +244,6 @@
             if (!newWrongWords || newWrongWords.length === 0) return;
 
             newWrongWords.forEach(newWord => {
-                // 중복 확인: 동일한 kanji를 가진 단어가 이미 있는지 확인
                 const exists = wrongWords.some(existingWord => existingWord.kanji === newWord.kanji);
                 if (!exists) {
                     wrongWords.push(newWord);
@@ -198,47 +252,204 @@
             saveWrongWordsToLocal();
         }
 
-        // 앱 초기화 (Firebase setup 대체)
+        // 앱 초기화 (Local Storage 로드)
         function setupApp() {
             setupDeviceId();
+            loadFolders(); // 폴더 먼저 로드
             loadSavedWordLists();
+            loadManualWords(); // 개별 단어 로드
             loadStats();
             loadWrongWords();
             renderApp();
             console.log("앱 초기화 완료. 기기 ID:", deviceId);
         }
 
+        // --- 폴더 관리 로직 (1. 폴더 생성/삭제/수정) ---
+
+        /** 폴더 생성 */
+        function addFolder(name) {
+            if (!name || name.trim() === '') {
+                renderModal("입력 오류", "폴더 이름을 입력해야 합니다.");
+                return;
+            }
+            const newFolder = {
+                id: generateUniqueId(), // 안전한 ID 생성기 사용
+                name: name.trim(),
+                createdAt: new Date().toISOString()
+            };
+            wordFolders.push(newFolder);
+            saveFoldersToLocal();
+            selectedFolderId = newFolder.id;
+            renderApp();
+        }
+
+        /** 폴더 이름 변경 */
+        function renameFolder(folderId, newName) {
+            if (!newName || newName.trim() === '') {
+                 renderModal("입력 오류", "새 폴더 이름을 입력해야 합니다.");
+                return;
+            }
+            const folder = wordFolders.find(f => f.id === folderId);
+            if (folder && newName.trim()) {
+                folder.name = newName.trim();
+                saveFoldersToLocal();
+                renderApp();
+            }
+        }
+
+        /** 폴더 삭제 */
+        function deleteFolder(folderId) {
+            const defaultFolderId = wordFolders[0].id;
+            const folderToDelete = wordFolders.find(f => f.id === folderId);
+            
+            if (folderId === defaultFolderId) {
+                renderModal("삭제 불가", "기본 폴더는 삭제할 수 없습니다.");
+                return;
+            }
+
+            renderModal(
+                "폴더 삭제 확인", 
+                `'${folderToDelete.name}' 폴더를 삭제하시겠습니까? 안에 있는 모든 단어 목록과 개별 단어는 '전체 단어장'으로 이동됩니다.`,
+                () => {
+                    // 1. 단어 목록 (20개 그룹) 이동:
+                    savedWordLists.forEach(list => {
+                        if (list.folderId === folderId) {
+                            list.folderId = defaultFolderId;
+                        }
+                    });
+                    saveWordListsToLocal();
+                    
+                    // 2. 개별 단어 이동:
+                    manualSavedWords.forEach(item => {
+                        if (item.folderId === folderId) {
+                            item.folderId = defaultFolderId;
+                        }
+                    });
+                    saveManualWordsToLocal();
+
+                    // 3. 폴더 삭제
+                    wordFolders = wordFolders.filter(f => f.id !== folderId);
+                    saveFoldersToLocal();
+                    
+                    // 4. 선택 폴더 재설정
+                    selectedFolderId = defaultFolderId;
+                    renderApp();
+                }
+            );
+        }
+
         // --- Local Storage Operations (Saved Lists) ---
+        
+        /** 2. 단어 저장 시 폴더 선택 모달 표시 */
+        function showFolderSelectionModal() {
+            return new Promise(resolve => {
+                const folderOptions = wordFolders.map(folder => `
+                    <option value="${folder.id}">${folder.name}</option>
+                `).join('');
+
+                const modalHtml = `
+                    <div id="folder-select-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+                        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                            <h3 class="text-xl font-bold text-gray-900 mb-4"><i class="fas fa-folder-plus mr-2"></i> 저장할 폴더 선택</h3>
+                            <div class="mb-6">
+                                <label for="folder-select" class="block text-sm font-medium text-gray-700 mb-1">단어 목록을 저장할 폴더를 선택하세요.</label>
+                                <select id="folder-select" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-toss-blue focus:border-toss-blue">
+                                    ${folderOptions}
+                                </select>
+                            </div>
+                            <div class="flex justify-end space-x-3">
+                                <button id="modal-cancel" class="py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition">취소</button>
+                                <button id="modal-save" class="py-2 px-4 bg-toss-green text-white font-semibold rounded-lg hover:bg-green-600 transition">여기에 저장</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('custom-modal')?.remove();
+                appContainer.insertAdjacentHTML('afterend', modalHtml);
+
+                const modal = document.getElementById('folder-select-modal');
+                
+                modal.querySelector('#modal-cancel').addEventListener('click', () => {
+                    modal.remove();
+                    resolve(null); // 취소 시 null 반환
+                });
+                
+                modal.querySelector('#modal-save').addEventListener('click', () => {
+                    const selectedId = modal.querySelector('#folder-select').value;
+                    modal.remove();
+                    resolve(selectedId);
+                });
+                
+                // 기본으로 현재 선택된 폴더 선택
+                modal.querySelector('#folder-select').value = selectedFolderId;
+            });
+        }
+        
+        /** 20개 그룹 단어 목록 저장 */
         async function saveWordList() {
             if (!generatedWords.length) {
                 showError("저장할 단어 목록이 없습니다.");
                 return;
             }
 
+            // 폴더 선택 모달 호출
+            const targetFolderId = await showFolderSelectionModal();
+            if (!targetFolderId) {
+                return; // 사용자가 취소함
+            }
+
             const listData = {
-                // Firestore timestamp 대신 간단한 JS Date 객체 사용
-                id: crypto.randomUUID(), 
+                id: generateUniqueId(), 
+                folderId: targetFolderId, 
                 level: selectedLevel,
                 words: generatedWords,
                 createdAt: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
                 wordCount: generatedWords.length,
             };
 
-            // 목록에 추가하고 저장
             savedWordLists.push(listData);
             savedWordLists.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             saveWordListsToLocal();
             
-            renderModal("저장 완료", `N${selectedLevel} 단어 ${generatedWords.length}개가 성공적으로 단어장에 저장되었습니다!`, () => {
+            // 저장 후 현재 뷰를 리스트 뷰로 전환하고 해당 폴더를 선택
+            selectedFolderId = targetFolderId;
+            renderModal("저장 완료", `N${selectedLevel} 단어 ${generatedWords.length}개 목록이 폴더에 저장되었습니다!`, () => {
                 currentView = 'lists';
                 isViewingWrongWords = false;
                 renderApp();
             });
         }
+        
+        /** 개별 단어 저장 (요청 사항) */
+        async function saveSingleWord(word) {
+            const targetFolderId = await showFolderSelectionModal();
+            if (!targetFolderId) return; // Cancelled
 
-        // --- Gemini API Call ---
+            // 중복 확인
+            const isDuplicate = manualSavedWords.some(item => 
+                item.folderId === targetFolderId && item.word.kanji === word.kanji
+            );
+
+            if (isDuplicate) {
+                renderModal("추가 실패", `'${word.kanji}' 단어는 이미 이 폴더에 저장되어 있습니다.`);
+                return;
+            }
+
+            manualSavedWords.push({
+                id: generateUniqueId(),
+                folderId: targetFolderId,
+                word: word,
+                createdAt: new Date().toISOString()
+            });
+            saveManualWordsToLocal();
+            
+            renderModal("추가 완료", `'${word.kanji}' 단어가 폴더에 성공적으로 저장되었습니다.`);
+        }
+        
+        // --- Gemini API Call (생략) ---
         async function fetchWithRetry(payload, retries = MAX_RETRIES) {
-            for (let i = 0; i < retries; i++) {
+             for (let i = 0; i < retries; i++) {
                 try {
                     const apiUrl = `${API_URL_BASE}?key=${API_KEY}`;
                     const response = await fetch(apiUrl, {
@@ -249,17 +460,14 @@
 
                     if (!response.ok) {
                         const errorBody = await response.json();
-                        console.error("API Error Response:", errorBody);
                         throw new Error(`API 응답 실패: ${response.status} ${response.statusText}`);
                     }
 
                     return await response.json();
                 } catch (error) {
-                    console.error(`Fetch 시도 ${i + 1} 실패:`, error);
                     if (i < retries - 1) {
                         const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
                         await new Promise(resolve => setTimeout(resolve, delay));
-                        console.log(`재시도 (${i + 2}/${retries})...`);
                     } else {
                         throw new Error("API 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.");
                     }
@@ -383,7 +591,6 @@
         }
 
         // --- Utility Functions ---
-
         function showError(message) {
             errorMessageDiv.textContent = message;
             if (message) {
@@ -401,6 +608,52 @@
                 </div>
             `;
         }
+        
+        // Custom Input Modal (Replacing prompt())
+        function renderInputModal(title, initialValue = '', onConfirm) {
+            const modalHtml = `
+                <div id="input-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                        <h3 class="text-xl font-bold text-gray-900 mb-4">${title}</h3>
+                        <div class="mb-6">
+                            <input id="modal-input" type="text" value="${initialValue}" placeholder="이름을 입력하세요" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-toss-blue focus:border-toss-blue text-gray-900">
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button id="modal-cancel" class="py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition">취소</button>
+                            <button id="modal-confirm" class="py-2 px-4 bg-toss-green text-white font-semibold rounded-lg hover:bg-green-600 transition">확인</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('input-modal')?.remove();
+            document.getElementById('custom-modal')?.remove(); // Ensure standard modal is also removed
+            appContainer.insertAdjacentHTML('afterend', modalHtml);
+
+            const modal = document.getElementById('input-modal');
+            const input = document.getElementById('modal-input');
+            input.focus();
+            
+            const handleConfirm = () => {
+                const value = input.value.trim();
+                modal.remove();
+                onConfirm(value);
+            };
+
+            modal.querySelector('#modal-cancel').addEventListener('click', () => {
+                modal.remove();
+                onConfirm(null); // 취소 시 null 반환
+            });
+
+            modal.querySelector('#modal-confirm').addEventListener('click', handleConfirm);
+            
+            // Enter 키 입력 처리
+            input.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    handleConfirm();
+                }
+            });
+        }
 
         function renderModal(title, message, onConfirm = null) {
             let modalHtml = `
@@ -416,6 +669,7 @@
                 </div>
             `;
             
+            document.getElementById('input-modal')?.remove(); // Ensure input modal is removed
             document.getElementById('custom-modal')?.remove();
             
             appContainer.insertAdjacentHTML('afterend', modalHtml);
@@ -427,8 +681,8 @@
                 modal.remove();
             });
         }
-
-        // --- Generator View (Main) ---
+        // --- End Utility Functions ---
+        
 
         function renderGeneratorView() {
             const wordListHtml = generatedWords.length > 0 
@@ -475,11 +729,12 @@
         }
 
         function renderWordCard(word, index) {
+            const displayIndex = typeof index === 'number' ? index + 1 : '';
             return `
                 <div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-md transition duration-200 cursor-pointer" data-index="${index}">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
-                            <span class="flex-shrink-0 text-sm font-medium text-toss-green bg-green-50 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">${index + 1}</span>
+                            <span class="flex-shrink-0 text-sm font-medium text-toss-green bg-green-50 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">${displayIndex}</span>
                             <div class="flex flex-col min-w-0">
                                 <div class="flex items-baseline mb-0.5">
                                     <span class="word-cell-kanji text-xl font-bold text-gray-900 mr-2 break-words">${word.kanji}</span>
@@ -498,6 +753,10 @@
                         <p class="text-sm text-gray-600 mb-3 italic">${word.example_jp}</p>
                         <p class="text-sm text-gray-800 mb-1 font-semibold">예문 (韓)</p>
                         <p class="text-sm text-gray-600">${word.example_kr}</p>
+                        <!-- 단어장에 개별 저장 버튼 추가 -->
+                        <button data-action="save-single" data-word-index="${index}" class="mt-3 py-1 px-3 bg-toss-green text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition">
+                            <i class="fas fa-plus mr-1"></i> 단어장에 추가
+                        </button>
                     </div>
                 </div>
             `;
@@ -531,9 +790,19 @@
             document.getElementById('save-button')?.addEventListener('click', saveWordList);
 
             document.getElementById('start-quiz-button')?.addEventListener('click', () => startQuiz(generatedWords));
+
+            // 개별 단어 저장 리스너 추가
+            document.querySelectorAll('[data-action="save-single"]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 카드 토글 방지
+                    const index = parseInt(e.currentTarget.dataset.wordIndex);
+                    const word = generatedWords[index];
+                    saveSingleWord(word);
+                });
+            });
         }
 
-        // --- Quiz View ---
+        // --- Quiz View (생략) ---
 
         function startQuiz(wordsToQuiz) {
             if (wordsToQuiz.length === 0) {
@@ -548,18 +817,18 @@
         }
 
         function generateQuizOptions(correctWord) {
-            // 현재 생성된 단어 목록과 저장된 모든 단어 목록을 합쳐서 옵션을 생성
-            const allWords = [...generatedWords, ...savedWordLists.flatMap(list => list.words || []), ...wrongWords];
-            // 중복 제거
+            // 퀴즈 옵션 생성 시 개별 단어장 단어도 포함
+            const allWords = [
+                ...generatedWords, 
+                ...savedWordLists.flatMap(list => list.words || []), 
+                ...wrongWords,
+                ...manualSavedWords.map(item => item.word) 
+            ];
             const uniqueWords = allWords.filter((word, index, self) => 
-                index === self.findIndex((t) => (
-                    t.kanji === word.kanji
-                ))
+                index === self.findIndex((t) => (t.kanji === word.kanji))
             );
             
             const options = [correctWord.korean_meaning];
-            
-            // 3 random incorrect options
             const incorrectWords = uniqueWords.filter(w => w.korean_meaning !== correctWord.korean_meaning);
             
             while (options.length < 4 && incorrectWords.length > 0) {
@@ -587,7 +856,6 @@
                 selectedButton.classList.add('bg-red-500', 'text-white');
                 document.querySelector(`[data-meaning="${correctMeaning}"]`).classList.add('bg-blue-500', 'text-white');
                 
-                // 오답 노트에 자동 추가 (Local Storage)
                 addWrongWords([currentWord]);
             }
 
@@ -601,7 +869,6 @@
 
         function renderQuizView() {
             if (currentQuestionIndex >= quizWords.length) {
-                // 퀴즈 종료 시 통계 업데이트 (Local Storage)
                 const totalQuizQuestions = quizWords.length;
                 const correctCount = quizScore;
                 updateStats(totalQuizQuestions, correctCount);
@@ -663,8 +930,156 @@
                 renderApp();
             });
         }
+        
+        // --- My Lists View (폴더 및 목록 렌더링) ---
 
-        // --- My Lists View (통계 + 오답 노트) ---
+        function renderFolderManagement() {
+            return `
+                <div id="folder-management" class="flex flex-col space-y-2 mb-6">
+                    <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-2">폴더 관리</h3>
+                    <div class="flex space-x-2 overflow-x-auto pb-2">
+                        <button id="add-folder-button" class="flex-shrink-0 py-2 px-4 bg-toss-green text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150">
+                            <i class="fas fa-plus mr-1"></i> 새 폴더
+                        </button>
+                        ${wordFolders.map(folder => `
+                            <div data-folder-id="${folder.id}" class="folder-pill flex-shrink-0 flex items-center bg-gray-100 text-gray-700 py-2 px-3 rounded-full border ${selectedFolderId === folder.id ? 'border-toss-blue bg-blue-50 text-toss-blue font-bold shadow-sm' : 'border-gray-300 hover:bg-gray-200'} transition duration-150">
+                                <span class="folder-name-display cursor-pointer mr-2">${folder.name}</span>
+                                <div class="folder-actions text-gray-500 space-x-1">
+                                    <button data-action="rename" class="rename-button text-xs hover:text-toss-blue p-1 rounded-full"><i class="fas fa-pen"></i></button>
+                                    <button data-action="delete" class="delete-button text-xs hover:text-red-500 p-1 rounded-full ${wordFolders[0].id === folder.id ? 'opacity-0 cursor-default' : ''}"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        /** 개별 저장된 단어 카드 렌더링 (삭제 버튼 포함) */
+        function renderIndividualWordCard(item) {
+            const word = item.word;
+            return `
+                <div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center transition duration-200 hover:bg-gray-50 mb-2" data-saved-id="${item.id}" data-type="manual">
+                    <div class="flex items-center min-w-0 flex-grow">
+                        <span class="flex-shrink-0 text-xs font-medium text-toss-blue bg-blue-50 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">단</span>
+                        <div class="flex flex-col min-w-0">
+                            <div class="flex items-baseline mb-0.5">
+                                <span class="word-cell-kanji text-lg font-bold text-gray-900 mr-2 break-words">${word.kanji}</span>
+                                <span class="text-xs text-blue-600 font-medium break-words">【${word.kana}】</span>
+                            </div>
+                            <div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div>
+                        </div>
+                    </div>
+                    <button data-action="delete-single" data-saved-id="${item.id}" class="flex-shrink-0 ml-2 p-1 text-red-500 hover:text-red-700 transition">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        /** 오답 노트 단어 카드 렌더링 (삭제 버튼 포함) */
+        function renderWrongWordCard(word, index) {
+            return `
+                <div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center transition duration-200 hover:bg-gray-50 mb-2" data-index="${index}" data-type="wrong">
+                    <div class="flex items-center min-w-0 flex-grow">
+                        <span class="flex-shrink-0 text-xs font-medium text-red-500 bg-red-100 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">오답</span>
+                        <div class="flex flex-col min-w-0">
+                            <div class="flex items-baseline mb-0.5">
+                                <span class="word-cell-kanji text-lg font-bold text-gray-900 mr-2 break-words">${word.kanji}</span>
+                                <span class="text-xs text-blue-600 font-medium break-words">【${word.kana}】</span>
+                            </div>
+                            <div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div>
+                        </div>
+                    </div>
+                    <button data-action="delete-wrong" data-word-index="${index}" class="flex-shrink-0 ml-2 p-1 text-red-500 hover:text-red-700 transition">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+
+        function renderListsView() {
+            const folderName = wordFolders.find(f => f.id === selectedFolderId)?.name || '폴더 오류';
+            
+            let listTitleText = '';
+            let listItems = '';
+            let combinedItems = [];
+
+            if (isViewingWrongWords) {
+                listTitleText = `오답 노트 (${wrongWords.length}개)`;
+                listItems = wrongWords.length > 0 
+                    ? wrongWords.map((word, index) => renderWrongWordCard(word, index)).join('') 
+                    : `<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-lg">틀린 단어가 없습니다! 대단해요.</p>`;
+            } else {
+                // 20개 그룹 목록
+                const savedListsInFolder = savedWordLists.filter(list => list.folderId === selectedFolderId);
+                // 개별 저장 단어
+                const savedIndividualWords = manualSavedWords.filter(item => item.folderId === selectedFolderId);
+
+                listTitleText = `${folderName} (${savedListsInFolder.length}개 목록, ${savedIndividualWords.length}개 단어)`;
+                
+                // 1. 20개 그룹 목록 추가
+                if (savedListsInFolder.length > 0) {
+                    combinedItems.push(`<h3 class="text-md font-bold text-gray-700 mb-3">전체 목록 (20개씩)</h3>`);
+                    savedListsInFolder.forEach((list, index) => {
+                        combinedItems.push(renderSavedListCard(list, index));
+                    });
+                }
+
+                // 2. 개별 저장 단어 추가
+                if (savedIndividualWords.length > 0) {
+                    combinedItems.push(`<h3 class="text-md font-bold text-gray-700 mt-6 mb-3 border-t pt-3 border-gray-200">개별 저장 단어 (${savedIndividualWords.length}개)</h3>`);
+                    savedIndividualWords.forEach(item => {
+                        combinedItems.push(renderIndividualWordCard(item));
+                    });
+                }
+
+                listItems = combinedItems.length > 0
+                    ? combinedItems.join('')
+                    : `<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-lg">이 폴더에 저장된 단어 목록이나 개별 단어가 없습니다.</p>`;
+            }
+
+
+            return `
+                <div id="lists-content">
+                    ${renderStatsCard()}
+                    
+                    <p class="text-sm text-gray-600 mb-4">현재 기기 ID: <code class="bg-gray-200 px-2 py-0.5 rounded text-xs text-red-600">${deviceId}</code></p>
+                    
+                    ${renderFolderManagement()} <!-- 폴더 관리 UI 추가 -->
+                    
+                    <!-- 오답 노트 토글 버튼 -->
+                    <div class="flex space-x-2 mb-4">
+                        <button id="toggle-saved-lists" class="w-1/2 py-3 text-lg font-bold rounded-xl transition ${!isViewingWrongWords ? 'bg-toss-blue text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                            <i class="fas fa-bookmark mr-1"></i> 저장된 목록/단어
+                        </button>
+                        <button id="toggle-wrong-words" class="w-1/2 py-3 text-lg font-bold rounded-xl transition ${isViewingWrongWords ? 'bg-toss-yellow text-gray-900' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                            <i class="fas fa-times-circle mr-1"></i> 오답 노트 (${wrongWords.length})
+                        </button>
+                    </div>
+
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">${listTitleText}</h2>
+                    
+                    ${isViewingWrongWords && wrongWords.length > 0 ? `
+                        <div class="mb-4">
+                            <button id="start-wrong-quiz" class="w-full py-3 bg-red-500 text-white font-bold rounded-xl shadow-md hover:bg-red-600 transition">
+                                <i class="fas fa-redo mr-1"></i> 오답 재도전 퀴즈 시작 (${wrongWords.length}문제)
+                            </button>
+                        </div>
+                        <div class="space-y-4 mb-4">
+                            <button id="clear-all-wrong-words" class="w-full py-2 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition">
+                                <i class="fas fa-eraser mr-1"></i> 오답 노트 전체 비우기
+                            </button>
+                        </div>
+                    ` : ''}
+
+                    <div id="word-list-display" class="space-y-4 max-h-72 overflow-y-auto pr-2">
+                        ${listItems}
+                    </div>
+                </div>
+            `;
+        }
 
         function renderStatsCard() {
             return `
@@ -688,58 +1103,12 @@
             `;
         }
 
-        function renderListsView() {
-            const listToDisplay = isViewingWrongWords ? wrongWords : savedWordLists;
-            const listTitleText = isViewingWrongWords ? `오답 노트 (${wrongWords.length}개)` : `저장된 단어장 (${savedWordLists.length}개)`;
-
-            const listItems = listToDisplay.length > 0 
-                ? (isViewingWrongWords 
-                    // 오답 노트는 일반 단어 카드 형태로 렌더링
-                    ? listToDisplay.map((word, index) => renderWordCard(word, index)).join('') 
-                    // 저장된 목록은 리스트 카드 형태로 렌더링
-                    : listToDisplay.map((list, index) => renderSavedListCard(list, index)).join('')
-                )
-                : `<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-lg">${isViewingWrongWords ? '틀린 단어가 없습니다! 대단해요.' : '저장된 단어장이 없습니다.'}</p>`;
-
-            return `
-                <div id="lists-content">
-                    ${renderStatsCard()}
-                    
-                    <p class="text-sm text-gray-600 mb-4">현재 기기 ID: <code class="bg-gray-200 px-2 py-0.5 rounded text-xs text-red-600">${deviceId}</code></p>
-                    
-                    <!-- 오답 노트 토글 버튼 -->
-                    <div class="flex space-x-2 mb-4">
-                        <button id="toggle-saved-lists" class="w-1/2 py-3 text-lg font-bold rounded-xl transition ${!isViewingWrongWords ? 'bg-toss-blue text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                            <i class="fas fa-bookmark mr-1"></i> 저장된 목록
-                        </button>
-                        <button id="toggle-wrong-words" class="w-1/2 py-3 text-lg font-bold rounded-xl transition ${isViewingWrongWords ? 'bg-toss-yellow text-gray-900' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                            <i class="fas fa-times-circle mr-1"></i> 오답 노트 (${wrongWords.length})
-                        </button>
-                    </div>
-
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">${listTitleText}</h2>
-                    
-                    ${isViewingWrongWords && wrongWords.length > 0 ? `
-                        <div class="mb-4">
-                            <button id="start-wrong-quiz" class="w-full py-3 bg-red-500 text-white font-bold rounded-xl shadow-md hover:bg-red-600 transition">
-                                <i class="fas fa-redo mr-1"></i> 오답 재도전 퀴즈 시작 (${wrongWords.length}문제)
-                            </button>
-                        </div>
-                    ` : ''}
-
-                    <div id="saved-lists" class="space-y-4 max-h-72 overflow-y-auto pr-2">
-                        ${listItems}
-                    </div>
-                </div>
-            `;
-        }
-
         function renderSavedListCard(list, index) {
             return `
                 <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-md flex justify-between items-center transition duration-200 hover:bg-gray-50">
                     <div class="flex flex-col">
                         <h3 class="text-lg font-bold text-gray-800">
-                            N${list.level} 단어장 (${list.wordCount}개)
+                            N${list.level} 단어 목록 (${list.wordCount}개)
                         </h3>
                         <p class="text-sm text-gray-500">저장일: ${list.createdAt}</p>
                     </div>
@@ -747,16 +1116,57 @@
                         <button data-list-id="${list.id}" data-action="load" class="py-2 px-3 bg-toss-blue text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition">
                             <i class="fas fa-eye mr-1"></i> 보기
                         </button>
-                        <button data-list-id="${list.id}" data-action="quiz" class="py-2 px-3 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-500 transition">
-                            <i class="fas fa-question-circle mr-1"></i> 퀴즈
+                        <button data-list-id="${list.id}" data-action="delete-list" class="py-2 px-3 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
                 </div>
             `;
         }
-        
+
         function attachListsListeners() {
-            // 오답 노트/저장 목록 토글
+            // --- 폴더 관리 리스너 ---
+            document.getElementById('add-folder-button')?.addEventListener('click', () => {
+                // Custom Input Modal 사용
+                renderInputModal("새 폴더 이름 입력", "새 폴더", (folderName) => {
+                    if (folderName) {
+                        addFolder(folderName);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.folder-pill').forEach(pill => {
+                const folderId = pill.dataset.folderId;
+                
+                // 1-1. 폴더 선택 (필터링)
+                pill.querySelector('.folder-name-display')?.addEventListener('click', () => {
+                    isViewingWrongWords = false; // 저장된 목록 보기로 전환
+                    selectedFolderId = folderId;
+                    renderApp();
+                });
+
+                // 1-2. 폴더 이름 변경
+                pill.querySelector('[data-action="rename"]')?.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 폴더 선택 이벤트 방지
+                    const currentFolder = wordFolders.find(f => f.id === folderId);
+                    
+                    if (currentFolder) {
+                        renderInputModal(`'${currentFolder.name}' 이름 변경`, currentFolder.name, (newName) => {
+                            if (newName) {
+                                renameFolder(folderId, newName);
+                            }
+                        });
+                    }
+                });
+
+                // 1-3. 폴더 삭제
+                pill.querySelector('[data-action="delete"]')?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteFolder(folderId);
+                });
+            });
+
+            // --- 오답 노트 / 저장 목록 토글 ---
             document.getElementById('toggle-saved-lists')?.addEventListener('click', () => {
                 isViewingWrongWords = false;
                 renderApp();
@@ -766,35 +1176,74 @@
                 renderApp();
             });
 
-            // 오답 재도전 퀴즈 시작
+            // --- 오답 노트/단어장 액션 ---
             document.getElementById('start-wrong-quiz')?.addEventListener('click', () => {
                 if(wrongWords.length > 0) {
                     startQuiz(wrongWords);
                 }
             });
 
-            // 저장 목록 카드 리스너
-            document.getElementById('saved-lists')?.addEventListener('click', (e) => {
-                const card = e.target.closest('.word-card');
-                if (card && isViewingWrongWords) {
-                    // 오답 노트 목록일 때는 카드 클릭 시 상세 정보 토글
-                    const details = card.querySelector('.word-details');
-                    const icon = card.querySelector('i');
-                    if (details) {
-                        details.classList.toggle('hidden');
-                        icon.classList.toggle('rotate-180');
+            document.getElementById('clear-all-wrong-words')?.addEventListener('click', () => {
+                renderModal("오답 노트 초기화", "오답 노트에 있는 모든 단어를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
+                    wrongWords = [];
+                    saveWrongWordsToLocal();
+                    renderApp();
+                });
+            });
+
+            // 오답 노트 개별 관리 및 저장 목록 삭제
+            document.getElementById('word-list-display')?.addEventListener('click', (e) => {
+                const target = e.target.closest('button');
+                
+                if (!target) return;
+                
+                // 1. 개별 저장 단어 삭제 (delete-single)
+                if (target.dataset.action === 'delete-single') {
+                    const savedId = target.dataset.savedId;
+                    const wordToDelete = manualSavedWords.find(item => item.id === savedId)?.word;
+                    
+                    if (wordToDelete) {
+                        renderModal("단어 삭제 확인", `'${wordToDelete.kanji}' 단어를 폴더에서 삭제하시겠습니까?`, () => {
+                            manualSavedWords = manualSavedWords.filter(item => item.id !== savedId);
+                            saveManualWordsToLocal();
+                            renderApp();
+                        });
                     }
                     return;
                 }
+                
+                // 2. 오답 노트 개별 삭제 (delete-wrong)
+                if (target.dataset.action === 'delete-wrong') {
+                    const index = parseInt(target.dataset.wordIndex);
+                    const wordToDelete = wrongWords[index];
+                    
+                    renderModal("오답 삭제 확인", `'${wordToDelete.kanji}' 단어를 오답 노트에서 삭제하시겠습니까? (외웠다면)`, () => {
+                        wrongWords.splice(index, 1);
+                        saveWrongWordsToLocal();
+                        renderApp();
+                    });
+                    return;
+                }
+                
+                // 3. 저장된 목록 개별 삭제 (delete-list)
+                if (target.dataset.action === 'delete-list') {
+                    const listId = target.dataset.listId;
+                    const listToDelete = savedWordLists.find(l => l.id === listId);
 
-                const button = e.target.closest('button');
-                if (!button) return;
-
-                const listId = button.dataset.listId;
-                const action = button.dataset.action;
+                    renderModal("단어 목록 삭제", `'${listToDelete.level} 단어 목록'을 삭제하시겠습니까?`, () => {
+                        savedWordLists = savedWordLists.filter(l => l.id !== listId);
+                        saveWordListsToLocal();
+                        renderApp();
+                    });
+                    return;
+                }
+                
+                // 4. 저장된 목록 보기/퀴즈 (load)
+                const listId = target.dataset.listId;
+                const action = target.dataset.action;
                 const list = savedWordLists.find(l => l.id === listId);
 
-                if (!list) return;
+                if (!list || action !== 'load' && action !== 'quiz') return;
 
                 if (action === 'load') {
                     selectedLevel = list.level;
@@ -805,6 +1254,23 @@
                 } else if (action === 'quiz') {
                     startQuiz(list.words);
                 }
+            });
+            
+            // NOTE: 개별 저장 단어와 오답 노트 카드는 별도의 삭제 버튼을 가지므로,
+            // 단어 카드 클릭 시 상세 정보 토글 로직을 위해 별도의 리스너 추가 필요
+            document.querySelectorAll('#word-list-display .word-card').forEach(card => {
+                // 단어 카드 자체를 클릭하고, 삭제 버튼을 누른 경우가 아니라면 상세 정보 토글
+                card.addEventListener('click', (e) => {
+                    const actionButton = e.target.closest('button[data-action]');
+                    if (actionButton) return; // 액션 버튼 클릭 무시
+
+                    const details = card.querySelector('.word-details');
+                    const icon = card.querySelector('i.fa-chevron-down');
+                    if (details && icon) {
+                        details.classList.toggle('hidden');
+                        icon.classList.toggle('rotate-180');
+                    }
+                });
             });
         }
         
@@ -821,7 +1287,6 @@
                 renderApp();
             });
 
-            // Firebase 대신 로컬 스토리지 기반 앱 설정 시작
             setupApp();
         };
 
