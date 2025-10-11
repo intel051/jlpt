@@ -105,10 +105,27 @@
             measurementId: "G-P2D5HQ94S2"
         };
         
-        // Firebase 초기화 (호환성 SDK 방식 사용)
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = app.auth(); // 인증 모듈
-        const db = app.firestore(); // Firestore 모듈
+        // 이 변수들은 전역 변수로 선언됩니다.
+        let app, auth, db;
+        
+        // 🚨 즉시 실행 함수: Firebase 초기화 (ReferenceError 해결)
+        try {
+            // Firebase CDN이 로드되자마자 실행하여 'firebase' 객체를 사용합니다.
+            app = firebase.initializeApp(firebaseConfig);
+            auth = app.auth(); 
+            db = app.firestore(); 
+        } catch (error) {
+            console.error("Firebase 초기화 실패 (CDN 로딩 실패 가능성):", error);
+            // 초기화 실패 시, 인증 로직 대신 실패 메시지를 표시할 수 있도록 플래그를 설정합니다.
+            document.addEventListener('DOMContentLoaded', () => {
+                initUIElements();
+                showError("심각한 오류: Firebase SDK 로딩 실패 또는 설정 오류. (콘솔 확인)");
+                isAppReady = true;
+                renderApp();
+            });
+        }
+
+        // ------------------------------------------
 
         // Gemini API Configuration
         const API_KEY = "AIzaSyDfpal-sPS5EeCLYrvmeVnc_sA69L_EQ8M"; // Canvas 환경에서 자동 주입됨
@@ -157,12 +174,12 @@
         }
 
         // ------------------------------------------
-        // 💾 3. FIREBASE 데이터 저장/로드 함수 (onSnapshot -> get()으로 변경)
+        // 💾 3. FIREBASE 데이터 저장/로드 함수 (get()으로 변경)
         // ------------------------------------------
 
         // 모든 데이터 로드 (초기 1회)
         async function loadUserDataFromFirestore() {
-            if (!userId) return;
+            if (!userId || !db) return; // db 객체가 유효한지 확인합니다.
             showError('');
 
             try {
@@ -217,7 +234,7 @@
         
         // 통계 업데이트
         async function updateStats(attempts, correct) {
-            if (!userId) return;
+            if (!userId || !db) return;
 
             const userRef = db.collection('users').doc(userId);
             try {
@@ -239,7 +256,7 @@
 
         // 폴더 CRUD (Firestore 연동)
         async function saveFolderToFirestore(folder) {
-            if (!userId) return;
+            if (!userId || !db) return;
             try {
                 await db.collection('users').doc(userId).collection('folders').doc(folder.id).set(folder);
                 // 즉시 반영을 위해 로컬 목록 업데이트
@@ -249,7 +266,7 @@
             } catch (e) { console.error("폴더 저장 오류:", e); }
         }
         async function deleteFolderFromFirestore(folderId) {
-            if (!userId) return;
+            if (!userId || !db) return;
             try {
                 await db.collection('users').doc(userId).collection('folders').doc(folderId).delete();
                 wordFolders = wordFolders.filter(f => f.id !== folderId); // 로컬 목록 업데이트
@@ -259,7 +276,7 @@
 
         // 단어 목록 CRUD
         async function saveWordListToFirestore(listData) {
-            if (!userId) return;
+            if (!userId || !db) return;
             try {
                 await db.collection('users').doc(userId).collection('lists').doc(listData.id).set(listData);
                 const index = savedWordLists.findIndex(l => l.id === listData.id);
@@ -268,7 +285,7 @@
             } catch (e) { console.error("단어 목록 저장 오류:", e); }
         }
         async function deleteWordListFromFirestore(listId) {
-            if (!userId) return;
+            if (!userId || !db) return;
             try {
                 await db.collection('users').doc(userId).collection('lists').doc(listId).delete();
                 savedWordLists = savedWordLists.filter(l => l.id !== listId);
@@ -278,7 +295,7 @@
 
         // 개별 단어 CRUD
         async function saveManualWordToFirestore(manualWordItem) {
-            if (!userId) return;
+            if (!userId || !db) return;
             try {
                 await db.collection('users').doc(userId).collection('manualWords').doc(manualWordItem.id).set(manualWordItem);
                 const index = manualSavedWords.findIndex(m => m.id === manualWordItem.id);
@@ -287,7 +304,7 @@
             } catch (e) { console.error("개별 단어 저장 오류:", e); }
         }
         async function deleteManualWordFromFirestore(manualWordId) {
-            if (!userId) return;
+            if (!userId || !db) return;
             try {
                 await db.collection('users').doc(userId).collection('manualWords').doc(manualWordId).delete();
                 manualSavedWords = manualSavedWords.filter(m => m.id !== manualWordId);
@@ -297,7 +314,7 @@
 
         // 오답 노트 CRUD
         async function addWrongWordsToFirestore(newWrongWords) {
-            if (!userId || !newWrongWords || newWrongWords.length === 0) return;
+            if (!userId || !db || !newWrongWords || newWrongWords.length === 0) return;
             newWrongWords.forEach(async newWord => {
                 const docId = newWord.simplified; 
                 const docRef = db.collection('users').doc(userId).collection('wrongWords').doc(docId);
@@ -308,7 +325,7 @@
             });
         }
         async function deleteWrongWordFromFirestore(simplified) {
-             if (!userId) return;
+             if (!userId || !db) return;
             try {
                 await db.collection('users').doc(userId).collection('wrongWords').doc(simplified).delete();
                 wrongWords = wrongWords.filter(w => w.simplified !== simplified);
@@ -316,7 +333,7 @@
             } catch (e) { console.error("오답 삭제 오류:", e); }
         }
         async function clearAllWrongWordsFromFirestore() {
-            if (!userId) return;
+            if (!userId || !db) return;
             try {
                 const batch = db.batch();
                 const snapshot = await db.collection('users').doc(userId).collection('wrongWords').get();
@@ -331,6 +348,14 @@
 
         // 앱 초기화 및 인증 설정
         function setupAuthAndLoadData() {
+            if (!auth) {
+                 initUIElements();
+                 showError("심각한 오류: Firebase Authentication이 초기화되지 않았습니다.");
+                 isAppReady = true;
+                 renderApp();
+                 return;
+            }
+
             initUIElements();
             contentContainer.innerHTML = renderLoadingScreen();
             
@@ -1002,14 +1027,39 @@
         // ------------------------------------------
         // 🏁 Initialization
         // ------------------------------------------
+        
+        // 🚨 핵심 수정: window.onload 대신 DOMContentLoaded 사용 및 setTimeout으로 Firebase 객체 로딩 시간 확보
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM 요소 초기화
+            initUIElements(); 
 
-        window.onload = () => {
-            initUIElements(); // DOM 요소들을 먼저 초기화
+            // 탭 리스너 설정
             tabGenerator.addEventListener('click', () => { currentView = 'generator'; renderApp(); });
             tabLists.addEventListener('click', () => { currentView = 'lists'; isViewingWrongWords = false; renderApp(); });
 
-            setupAuthAndLoadData(); // Firebase 인증 및 데이터 로드 시작
-        };
+            // DOM 준비 후, Firebase 초기화 시작 (ReferenceError 방지)
+            if (typeof firebase !== 'undefined') {
+                try {
+                    // initializeFirebase 로직을 여기서 실행
+                    app = firebase.initializeApp(firebaseConfig);
+                    auth = app.auth(); 
+                    db = app.firestore(); 
+                    setupAuthAndLoadData();
+                } catch (error) {
+                    console.error("Firebase 초기화 실패 (initializeApp 오류):", error);
+                    initUIElements();
+                    showError("심각한 오류: Firebase 초기화 실패. (콘솔 확인)");
+                    isAppReady = true;
+                    renderApp();
+                }
+            } else {
+                // firebase 전역 객체가 아예 로드되지 않은 경우 (CDN 차단 등)
+                initUIElements();
+                showError("치명적 오류: Firebase CDN 로드 실패. 브라우저 설정 또는 네트워크를 확인해주세요.");
+                isAppReady = true;
+                renderApp();
+            }
+        });
         
     </script>
 </body>
