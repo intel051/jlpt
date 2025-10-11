@@ -106,7 +106,6 @@
         };
         
         // Firebase 초기화 (호환성 SDK 방식 사용)
-        // 이 코드가 실행되려면 위의 CDN들이 로드되어 'firebase' 객체가 정의되어야 합니다.
         const app = firebase.initializeApp(firebaseConfig);
         const auth = app.auth(); // 인증 모듈
         const db = app.firestore(); // Firestore 모듈
@@ -209,8 +208,9 @@
 
             } catch (e) {
                 console.error("Firebase 데이터 로드 오류:", e);
-                showError("데이터 로드 중 치명적인 오류 발생. Firestore 규칙(allow read, write: if true;)을 확인하세요.");
-                isAppReady = true;
+                // 규칙 문제일 가능성이 가장 높으므로, 오류 메시지를 더 명확히 표시
+                showError("데이터 로드 실패: Firestore 규칙(allow read, write: if true;)을 확인하거나 콘솔 오류를 확인해주세요.");
+                isAppReady = true; // 오류 상태로라도 앱 렌더링
                 renderApp(); 
             }
         }
@@ -303,10 +303,7 @@
                 const docRef = db.collection('users').doc(userId).collection('wrongWords').doc(docId);
                 try {
                     await docRef.set({...newWord, id: docId, createdAt: new Date().toISOString()});
-                    // 로컬 업데이트는 onSnapshot이 없으므로 직접 처리
-                    const exists = wrongWords.some(w => w.simplified === docId);
-                    if (!exists) { wrongWords.push({...newWord, id: docId}); }
-                    renderApp();
+                    // 로컬 업데이트는 get() 방식으로 변경했으므로, 여기서는 Firestore만 업데이트
                 } catch (e) { console.error("오답 노트 추가 오류:", e); }
             });
         }
@@ -350,6 +347,7 @@
                         await loadUserDataFromFirestore(); 
                     } catch (error) {
                         console.error("익명 로그인 오류:", error);
+                        // 🌟 문제 해결 핵심: 오류 발생 시에도 앱이 로딩 화면에서 탈출하도록 강제합니다.
                         showError("로그인 실패. 앱을 사용할 수 없습니다. (콘솔 확인)");
                         isAppReady = true; 
                         renderApp();
@@ -838,7 +836,7 @@
         
         // --- My Lists View (폴더 및 목록 렌더링) ---
         function renderFolderManagement() {
-            return `<div id="folder-management" class="flex flex-col space-y-2 mb-6"><h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-2">폴더 관리</h3><div class="flex space-x-2 overflow-x-auto pb-2"><button id="add-folder-button" class="flex-shrink-0 py-2 px-4 bg-toss-green text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150"><i class="fas fa-plus mr-1"></i> 새 폴더</button>${wordFolders.map(folder => `<div data-folder-id="${folder.id}" class="folder-pill flex-shrink-0 flex items-center bg-gray-100 text-gray-700 py-2 px-3 rounded-full border ${selectedFolderId === folder.id ? 'border-toss-blue bg-blue-50 text-toss-blue font-bold shadow-sm' : 'border-gray-300 hover:bg-gray-200'} transition duration-150"><span class="folder-name-display cursor-pointer mr-2">${folder.name}</span><div class="folder-actions text-gray-500 space-x-1"><button data-action="rename" class="rename-button text-xs hover:text-toss-blue p-1 rounded-full"><i class="fas fa-pen"></i></button><button data-action="delete" class="delete-button text-xs hover:text-red-500 p-1 rounded-full ${wordFolders[0].id === folder.id ? 'opacity-0 cursor-default' : ''}"><i class="fas fa-trash-alt"></i></button></div></div>`).join('')}</div></div>`;
+            return `<div id="folder-management" class="flex flex-col space-y-2 mb-6"><h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-2">폴더 관리</h3><div class="flex space-x-2 overflow-x-auto pb-2"><button id="add-folder-button" class="flex-shrink-0 py-2 px-4 bg-toss-green text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150"><i class="fas fa-plus mr-1"></i> 새 폴더</button>${wordFolders.map(folder => `<div data-folder-id="${folder.id}" class="folder-pill flex-shrink-0 flex items-center bg-gray-100 text-gray-700 py-2 px-3 rounded-full border ${selectedFolderId === folder.id ? 'border-toss-blue bg-blue-50 text-toss-blue font-bold shadow-sm' : 'border-gray-300 hover:bg-gray-200'} transition duration-150"><span class="folder-name-display cursor-pointer mr-2">${folder.name}</span><div class="folder-actions text-gray-500 space-x-1"><button data-action="rename" class="rename-button text-xs hover:text-toss-blue p-1 rounded-full"><i class="fas fa-pen"></i></button><button data-action="delete" class="delete-button text-xs hover:hover:text-red-500 p-1 rounded-full ${wordFolders[0].id === folder.id ? 'opacity-0 cursor-default' : ''}"><i class="fas fa-trash-alt"></i></button></div></div>`).join('')}</div></div>`;
         }
         
         function renderIndividualWordCard(item) {
