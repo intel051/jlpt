@@ -108,7 +108,7 @@
         // 이 변수들은 전역 변수로 선언됩니다.
         let app, auth, db;
         
-        // 🚨 즉시 실행 함수: Firebase 초기화 (ReferenceError 해결)
+        // 🚨 즉시 실행 함수: Firebase 초기화 (ReferenceError 해결 시도)
         try {
             // Firebase CDN이 로드되자마자 실행하여 'firebase' 객체를 사용합니다.
             app = firebase.initializeApp(firebaseConfig);
@@ -116,13 +116,10 @@
             db = app.firestore(); 
         } catch (error) {
             console.error("Firebase 초기화 실패 (CDN 로딩 실패 가능성):", error);
-            // 초기화 실패 시, 인증 로직 대신 실패 메시지를 표시할 수 있도록 플래그를 설정합니다.
-            document.addEventListener('DOMContentLoaded', () => {
-                initUIElements();
-                showError("심각한 오류: Firebase SDK 로딩 실패 또는 설정 오류. (콘솔 확인)");
-                isAppReady = true;
-                renderApp();
-            });
+            // Firebase 객체 정의 실패 시, auth와 db를 null로 설정하여 비상 모드를 유도
+            app = null;
+            auth = null;
+            db = null;
         }
 
         // ------------------------------------------
@@ -179,7 +176,13 @@
 
         // 모든 데이터 로드 (초기 1회)
         async function loadUserDataFromFirestore() {
-            if (!userId || !db) return; // db 객체가 유효한지 확인합니다.
+            // Firebase가 초기화되지 않았거나(null), 데이터베이스 객체가 없는 경우 즉시 오류 상태로 전환
+            if (!userId || !db) {
+                showError("클라우드 기능 오류: Firebase 초기화에 실패하여 데이터 로드를 건너뜁니다.");
+                isAppReady = true; 
+                renderApp(); 
+                return;
+            }
             showError('');
 
             try {
@@ -348,9 +351,10 @@
 
         // 앱 초기화 및 인증 설정
         function setupAuthAndLoadData() {
+            // Firebase가 초기화되지 않은 경우 (CDN 로딩 실패)
             if (!auth) {
                  initUIElements();
-                 showError("심각한 오류: Firebase Authentication이 초기화되지 않았습니다.");
+                 showError("클라우드 기능 사용 불가: Firebase SDK 로드에 실패했습니다. 단어 생성기만 사용 가능합니다.");
                  isAppReady = true;
                  renderApp();
                  return;
@@ -372,7 +376,7 @@
                         await loadUserDataFromFirestore(); 
                     } catch (error) {
                         console.error("익명 로그인 오류:", error);
-                        // 🌟 문제 해결 핵심: 오류 발생 시에도 앱이 로딩 화면에서 탈출하도록 강제합니다.
+                        // 오류 발생 시에도 로딩 화면 탈출
                         showError("로그인 실패. 앱을 사용할 수 없습니다. (콘솔 확인)");
                         isAppReady = true; 
                         renderApp();
@@ -383,6 +387,7 @@
 
         // --- 폴더 관리 로직 ---
         async function addFolder(name) {
+            if (!auth) { showError("클라우드 기능이 비활성화되었습니다."); return; }
             if (!name || name.trim() === '') { renderModal("입력 오류", "폴더 이름을 입력해야 합니다."); return; }
             const newFolder = { id: generateUniqueId(), name: name.trim(), createdAt: new Date().toISOString() };
             await saveFolderToFirestore(newFolder);
@@ -390,6 +395,7 @@
             renderApp();
         }
         async function renameFolder(folderId, newName) {
+            if (!auth) { showError("클라우드 기능이 비활성화되었습니다."); return; }
             if (!newName || newName.trim() === '') { renderModal("입력 오류", "새 폴더 이름을 입력해야 합니다."); return; }
             const folder = wordFolders.find(f => f.id === folderId);
             if (folder && newName.trim()) {
@@ -398,6 +404,7 @@
             }
         }
         async function deleteFolder(folderId) {
+            if (!auth) { showError("클라우드 기능이 비활성화되었습니다."); return; }
             const defaultFolderId = wordFolders[0].id;
             const folderToDelete = wordFolders.find(f => f.id === folderId);
             if (folderId === defaultFolderId) { renderModal("삭제 불가", "기본 폴더는 삭제할 수 없습니다."); return; }
@@ -433,6 +440,7 @@
         }
         
         async function saveWordList() {
+            if (!auth) { showError("클라우드 기능이 비활성화되었습니다. 단어 생성기만 사용 가능합니다."); return; }
             if (!generatedWords.length) { showError("저장할 단어 목록이 없습니다."); return; }
 
             showFolderSelectionModal().then(async targetFolderId => {
@@ -457,6 +465,7 @@
         }
         
         async function saveSingleWord(word) {
+            if (!auth) { showError("클라우드 기능이 비활성화되었습니다."); return; }
             showFolderSelectionModal().then(async targetFolderId => {
                 if (!targetFolderId) return; 
 
@@ -564,6 +573,7 @@
                     genButton.querySelector('#button-text').textContent = `단어 20개 생성`;
                     genButton.querySelector('#loading-spinner').classList.add('hidden');
                 }
+                // 클라우드 오류 상태라도 생성된 단어가 있으면 저장 버튼은 보여줍니다. (클릭 시 오류 안내)
                 if(generatedWords.length > 0 && saveButton) saveButton.classList.remove('hidden');
             }
         }
@@ -579,11 +589,23 @@
             [tabGenerator, tabLists].forEach(tab => {
                 tab.classList.remove('active', 'bg-white', 'text-toss-blue');
                 tab.classList.add('bg-gray-100', 'text-gray-700');
+                if (tab.id === 'tab-lists' && !auth) {
+                    tab.classList.add('opacity-50', 'cursor-not-allowed'); // 클라우드 기능 비활성화
+                } else {
+                    tab.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
             });
             
             let activeTab = null;
             if (currentView === 'generator' || currentView === 'quiz') { activeTab = tabGenerator; } 
-            else if (currentView === 'lists') { activeTab = tabLists; }
+            else if (currentView === 'lists') { 
+                if (auth) {
+                    activeTab = tabLists; 
+                } else {
+                    currentView = 'generator'; // 클라우드 오류 시 강제 이동
+                    activeTab = tabGenerator;
+                }
+            }
 
             if (activeTab) {
                 activeTab.classList.add('active', 'bg-white', 'text-toss-blue');
@@ -677,7 +699,7 @@
                         <button id="start-quiz-button" class="py-4 px-4 text-xl font-bold bg-yellow-400 text-gray-900 rounded-xl shadow-lg hover:bg-yellow-500 transition duration-300 transform active:scale-98 focus:outline-none focus:ring-4 focus:ring-yellow-500/50 ${generatedWords.length === 0 ? 'hidden' : ''}">
                             <i class="fas fa-question-circle"></i>
                         </button>
-                        <button id="save-button" class="py-4 px-4 text-xl font-bold bg-gray-300 text-gray-800 rounded-xl shadow-lg hover:bg-gray-400 transition duration-300 transform active:scale-98 focus:outline-none focus:ring-4 focus:ring-gray-500/50 ${generatedWords.length === 0 ? 'hidden' : ''}">
+                        <button id="save-button" class="py-4 px-4 text-xl font-bold bg-gray-300 text-gray-800 rounded-xl shadow-lg hover:bg-gray-400 transition duration-300 transform active:scale-98 focus:outline-none focus:ring-4 focus:ring-gray-500/50 ${generatedWords.length === 0 || !auth ? 'hidden' : ''}">
                             <i class="fas fa-save"></i>
                         </button>
                     </div>
@@ -722,7 +744,7 @@
                         <p class="text-sm text-gray-800 mb-1 font-semibold">예문 (韓)</p>
                         <p class="text-sm text-gray-600">${word.example_kr}</p>
                         <!-- 단어장에 개별 저장 버튼 추가 -->
-                        <button data-action="save-single" data-word-index="${index}" class="mt-3 py-1 px-3 bg-toss-green text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition">
+                        <button data-action="save-single" data-word-index="${index}" class="mt-3 py-1 px-3 bg-toss-green text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition ${!auth ? 'opacity-50 cursor-not-allowed' : ''}">
                             <i class="fas fa-plus mr-1"></i> 단어장에 추가
                         </button>
                     </div>
@@ -755,13 +777,23 @@
                 });
             });
 
-            document.getElementById('save-button')?.addEventListener('click', saveWordList);
+            document.getElementById('save-button')?.addEventListener('click', () => {
+                 if (!auth) {
+                    showError("클라우드 기능이 비활성화되어 저장할 수 없습니다.");
+                    return;
+                }
+                saveWordList();
+            });
 
             document.getElementById('start-quiz-button')?.addEventListener('click', () => startQuiz(generatedWords));
 
             document.querySelectorAll('[data-action="save-single"]').forEach(button => {
                 button.addEventListener('click', (e) => {
                     e.stopPropagation(); 
+                    if (!auth) {
+                        showError("클라우드 기능이 비활성화되어 저장할 수 없습니다.");
+                        return;
+                    }
                     const index = parseInt(e.currentTarget.dataset.wordIndex);
                     const word = generatedWords[index];
                     saveSingleWord(word);
@@ -822,7 +854,9 @@
                 selectedButton.classList.add('bg-red-500', 'text-white');
                 document.querySelector(`[data-meaning="${correctMeaning}"]`)?.classList.add('bg-hsk-red', 'text-white');
                 
-                addWrongWordsToFirestore([currentWord]);
+                if (auth) {
+                    addWrongWordsToFirestore([currentWord]);
+                }
             }
 
             document.querySelectorAll('.answer-button').forEach(btn => btn.disabled = true);
@@ -837,7 +871,9 @@
             if (currentQuestionIndex >= quizWords.length) {
                 const totalQuizQuestions = quizWords.length;
                 const correctCount = quizScore;
-                updateStats(totalQuizQuestions, correctCount);
+                if (auth) {
+                    updateStats(totalQuizQuestions, correctCount);
+                }
 
                 const message = quizScore === quizWords.length ? "만점! 대단합니다!" : "아쉽지만 다음엔 만점 도전!";
                 return `<div class="flex flex-col items-center justify-center py-10"><h2 class="text-3xl font-bold text-gray-900 mb-6">퀴즈 결과! 🎉</h2><p class="text-xl text-gray-700 mb-2">${message}</p><p class="text-6xl font-extrabold text-toss-blue">${quizScore} / ${quizWords.length}</p><div class="mt-8 space-y-3 w-full max-w-xs"><button id="restart-quiz-button" class="w-full py-3 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-500 transition">다시 퀴즈 시작</button><button id="exit-quiz-button" class="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition">목록으로 돌아가기</button></div></div>`;
@@ -861,16 +897,16 @@
         
         // --- My Lists View (폴더 및 목록 렌더링) ---
         function renderFolderManagement() {
-            return `<div id="folder-management" class="flex flex-col space-y-2 mb-6"><h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-2">폴더 관리</h3><div class="flex space-x-2 overflow-x-auto pb-2"><button id="add-folder-button" class="flex-shrink-0 py-2 px-4 bg-toss-green text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150"><i class="fas fa-plus mr-1"></i> 새 폴더</button>${wordFolders.map(folder => `<div data-folder-id="${folder.id}" class="folder-pill flex-shrink-0 flex items-center bg-gray-100 text-gray-700 py-2 px-3 rounded-full border ${selectedFolderId === folder.id ? 'border-toss-blue bg-blue-50 text-toss-blue font-bold shadow-sm' : 'border-gray-300 hover:bg-gray-200'} transition duration-150"><span class="folder-name-display cursor-pointer mr-2">${folder.name}</span><div class="folder-actions text-gray-500 space-x-1"><button data-action="rename" class="rename-button text-xs hover:text-toss-blue p-1 rounded-full"><i class="fas fa-pen"></i></button><button data-action="delete" class="delete-button text-xs hover:hover:text-red-500 p-1 rounded-full ${wordFolders[0].id === folder.id ? 'opacity-0 cursor-default' : ''}"><i class="fas fa-trash-alt"></i></button></div></div>`).join('')}</div></div>`;
+            return `<div id="folder-management" class="flex flex-col space-y-2 mb-6"><h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-2">폴더 관리</h3><div class="flex space-x-2 overflow-x-auto pb-2"><button id="add-folder-button" class="flex-shrink-0 py-2 px-4 bg-toss-green text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150 ${!auth ? 'opacity-50 cursor-not-allowed' : ''}"><i class="fas fa-plus mr-1"></i> 새 폴더</button>${wordFolders.map(folder => `<div data-folder-id="${folder.id}" class="folder-pill flex-shrink-0 flex items-center bg-gray-100 text-gray-700 py-2 px-3 rounded-full border ${selectedFolderId === folder.id ? 'border-toss-blue bg-blue-50 text-toss-blue font-bold shadow-sm' : 'border-gray-300 hover:bg-gray-200'} transition duration-150"><span class="folder-name-display cursor-pointer mr-2">${folder.name}</span><div class="folder-actions text-gray-500 space-x-1"><button data-action="rename" class="rename-button text-xs hover:text-toss-blue p-1 rounded-full ${!auth ? 'opacity-50 cursor-not-allowed' : ''}"><i class="fas fa-pen"></i></button><button data-action="delete" class="delete-button text-xs hover:hover:text-red-500 p-1 rounded-full ${wordFolders[0].id === folder.id || !auth ? 'opacity-0 cursor-default' : ''}"><i class="fas fa-trash-alt"></i></button></div></div>`).join('')}</div></div>`;
         }
         
         function renderIndividualWordCard(item) {
             const word = item.word;
-            return `<div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center transition duration-200 hover:bg-gray-50 mb-2" data-saved-id="${item.id}" data-type="manual"><div class="flex items-center min-w-0 flex-grow"><span class="flex-shrink-0 text-xs font-medium text-toss-blue bg-blue-50 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">단</span><div class="flex flex-col min-w-0"><div class="flex items-baseline mb-0.5"><span class="word-cell-simplified text-lg font-bold text-gray-900 mr-2 break-words">${word.simplified}</span><span class="text-xs text-blue-600 font-medium break-words">【${word.pinyin}】</span></div><div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div></div></div><button data-action="delete-single" data-saved-id="${item.id}" class="flex-shrink-0 ml-2 p-1 text-red-500 hover:text-red-700 transition"><i class="fas fa-trash-alt"></i></button></div>`;
+            return `<div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center transition duration-200 hover:bg-gray-50 mb-2" data-saved-id="${item.id}" data-type="manual"><div class="flex items-center min-w-0 flex-grow"><span class="flex-shrink-0 text-xs font-medium text-toss-blue bg-blue-50 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">단</span><div class="flex flex-col min-w-0"><div class="flex items-baseline mb-0.5"><span class="word-cell-simplified text-lg font-bold text-gray-900 mr-2 break-words">${word.simplified}</span><span class="text-xs text-blue-600 font-medium break-words">【${word.pinyin}】</span></div><div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div></div></div><button data-action="delete-single" data-saved-id="${item.id}" class="flex-shrink-0 ml-2 p-1 text-red-500 hover:text-red-700 transition ${!auth ? 'opacity-50 cursor-not-allowed' : ''}"><i class="fas fa-trash-alt"></i></button></div>`;
         }
 
         function renderWrongWordCard(word, index) {
-            return `<div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center transition duration-200 hover:bg-gray-50 mb-2" data-index="${index}" data-type="wrong"><div class="flex items-center min-w-0 flex-grow"><span class="flex-shrink-0 text-xs font-medium text-red-500 bg-red-100 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">오답</span><div class="flex flex-col min-w-0"><div class="flex items-baseline mb-0.5"><span class="word-cell-simplified text-lg font-bold text-gray-900 mr-2 break-words">${word.simplified}</span><span class="text-xs text-blue-600 font-medium break-words">【${word.pinyin}】</span></div><div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div></div></div><button data-action="delete-wrong" data-word-index="${index}" class="flex-shrink-0 ml-2 p-1 text-red-500 hover:text-red-700 transition"><i class="fas fa-trash-alt"></i></button></div>`;
+            return `<div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center transition duration-200 hover:bg-gray-50 mb-2" data-index="${index}" data-type="wrong"><div class="flex items-center min-w-0 flex-grow"><span class="flex-shrink-0 text-xs font-medium text-red-500 bg-red-100 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">오답</span><div class="flex flex-col min-w-0"><div class="flex items-baseline mb-0.5"><span class="word-cell-simplified text-lg font-bold text-gray-900 mr-2 break-words">${word.simplified}</span><span class="text-xs text-blue-600 font-medium break-words">【${word.pinyin}】</span></div><div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div></div></div><button data-action="delete-wrong" data-word-index="${index}" class="flex-shrink-0 ml-2 p-1 text-red-500 hover:text-red-700 transition ${!auth ? 'opacity-50 cursor-not-allowed' : ''}"><i class="fas fa-trash-alt"></i></button></div>`;
         }
 
 
@@ -880,6 +916,10 @@
             let listTitleText = '';
             let listItems = '';
             let combinedItems = [];
+            
+            if (!auth) {
+                return `<div class="p-6 text-center bg-red-50 rounded-xl"><i class="fas fa-exclamation-triangle text-hsk-red text-4xl mb-4"></i><h3 class="text-xl font-bold text-gray-800">클라우드 기능 비활성화</h3><p class="text-gray-600 mt-2">Firebase 로드 실패로 인해 나의 단어장, 오답 노트 기능은 사용할 수 없습니다. 단어 생성기 탭을 이용해 주세요.</p></div>`;
+            }
 
             if (isViewingWrongWords) {
                 listTitleText = `오답 노트 (${wrongWords.length}개)`;
@@ -941,10 +981,18 @@
         }
 
         function renderSavedListCard(list, index) {
-            return `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-md flex justify-between items-center transition duration-200 hover:bg-gray-50"><div class="flex flex-col"><h3 class="text-lg font-bold text-gray-800">HSK ${list.level}급 단어 목록 (${list.wordCount}개)</h3><p class="text-sm text-gray-500">저장일: ${list.createdAt}</p></div><div class="flex space-x-2"><button data-list-id="${list.id}" data-action="load" class="py-2 px-3 bg-toss-blue text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"><i class="fas fa-eye mr-1"></i> 보기</button><button data-list-id="${list.id}" data-action="delete-list" class="py-2 px-3 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition"><i class="fas fa-trash-alt"></i></button></div></div>`;
+            return `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-md flex justify-between items-center transition duration-200 hover:bg-gray-50"><div class="flex flex-col"><h3 class="text-lg font-bold text-gray-800">HSK ${list.level}급 단어 목록 (${list.wordCount}개)</h3><p class="text-sm text-gray-500">저장일: ${list.createdAt}</p></div><div class="flex space-x-2"><button data-list-id="${list.id}" data-action="load" class="py-2 px-3 bg-toss-blue text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"><i class="fas fa-eye mr-1"></i> 보기</button><button data-list-id="${list.id}" data-action="delete-list" class="py-2 px-3 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition ${!auth ? 'opacity-50 cursor-not-allowed' : ''}"><i class="fas fa-trash-alt"></i></button></div></div>`;
         }
 
         function attachListsListeners() {
+            // 클라우드 기능이 활성화되지 않은 경우 리스너 설정을 건너뜁니다.
+            if (!auth) {
+                document.getElementById('tab-lists')?.addEventListener('click', () => {
+                    showError("클라우드 기능이 비활성화되었습니다. 단어 생성기만 사용 가능합니다.");
+                });
+                return;
+            }
+
             document.getElementById('add-folder-button')?.addEventListener('click', () => { renderInputModal("새 폴더 이름 입력", "새 폴더", (folderName) => { if (folderName) { addFolder(folderName); } }); });
 
             document.querySelectorAll('.folder-pill').forEach(pill => {
@@ -1034,28 +1082,26 @@
             initUIElements(); 
 
             // 탭 리스너 설정
+            // 클라우드 기능이 실패했을 때, 나의 단어장 탭은 클릭 시 오류 안내를 띄웁니다.
             tabGenerator.addEventListener('click', () => { currentView = 'generator'; renderApp(); });
-            tabLists.addEventListener('click', () => { currentView = 'lists'; isViewingWrongWords = false; renderApp(); });
-
-            // DOM 준비 후, Firebase 초기화 시작 (ReferenceError 방지)
-            if (typeof firebase !== 'undefined') {
-                try {
-                    // initializeFirebase 로직을 여기서 실행
-                    app = firebase.initializeApp(firebaseConfig);
-                    auth = app.auth(); 
-                    db = app.firestore(); 
-                    setupAuthAndLoadData();
-                } catch (error) {
-                    console.error("Firebase 초기화 실패 (initializeApp 오류):", error);
-                    initUIElements();
-                    showError("심각한 오류: Firebase 초기화 실패. (콘솔 확인)");
-                    isAppReady = true;
-                    renderApp();
+            tabLists.addEventListener('click', () => { 
+                if (auth) {
+                    currentView = 'lists';
+                } else {
+                    showError("클라우드 기능이 비활성화되었습니다. 단어 생성기만 사용 가능합니다.");
                 }
+                isViewingWrongWords = false; 
+                renderApp(); 
+            });
+
+            // Firebase 초기화 성공 여부에 따라 앱 시작
+            if (auth) {
+                // Firebase 초기화 성공 -> 정상적인 인증 및 데이터 로드 시작
+                setupAuthAndLoadData();
             } else {
-                // firebase 전역 객체가 아예 로드되지 않은 경우 (CDN 차단 등)
+                // Firebase 초기화 실패 (try/catch 블록에서 auth = null 처리됨) -> 비상 모드 시작
                 initUIElements();
-                showError("치명적 오류: Firebase CDN 로드 실패. 브라우저 설정 또는 네트워크를 확인해주세요.");
+                showError("치명적 오류: Firebase CDN 로드 실패. 클라우드 기능(단어장)은 비활성화됩니다.");
                 isAppReady = true;
                 renderApp();
             }
