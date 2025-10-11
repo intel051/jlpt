@@ -106,6 +106,7 @@
         };
         
         // Firebase 초기화 (호환성 SDK 방식 사용)
+        // 이 코드가 실행되려면 위의 CDN들이 로드되어 'firebase' 객체가 정의되어야 합니다.
         const app = firebase.initializeApp(firebaseConfig);
         const auth = app.auth(); // 인증 모듈
         const db = app.firestore(); // Firestore 모듈
