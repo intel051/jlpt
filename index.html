@@ -506,8 +506,16 @@
             };
 
             const systemInstruction = "You are a Japanese vocabulary generation expert. Your task is to generate exactly 20 randomly selected JLPT N-level words. The output must strictly follow the provided JSON schema. Do not include any explanations, greetings, or markdown outside of the JSON object.";
-            const userQuery = `Generate 20 random, high-frequency words for JLPT N${level}. Include the kanji, kana, Korean meaning, part of speech (in Japanese like 名詞, 動詞), a short Japanese example sentence, and its Korean translation.`;
+            const userQuery = `Generate 20 random, high-frequency words for JLPT N${level} from a wide variety of topics.To ensure diversity, please select words from at least 10 different categories such as: daily life, work/business, nature, emotions, food, travel, society, technology, abstract concepts, and academics.`;
 
+Also, the final list must contain a balanced mix of parts of speech:
+- 8 nouns (名詞)
+- 5 verbs (動詞)
+- 4 i-adjectives (い形容詞)
+- 3 na-adjectives (な形容詞)
+
+For each word, include the kanji, kana, Korean meaning, part of speech, a short Japanese example sentence, and its Korean translation.`;
+            
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
                 systemInstruction: { parts: [{ text: systemInstruction }] },
