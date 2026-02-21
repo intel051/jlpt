@@ -43,10 +43,10 @@
 <script>
     /**
      * [보안 참고]
-     * 아래 'API_KEY_PLACEHOLDER'는 GitHub Actions 빌드 시점에 
+     * 아래 'AIzaSyDfpal-sPS5EeCLYrvmeVnc_sA69L_EQ8M'는 GitHub Actions 빌드 시점에 
      * Secrets에 저장된 실제 키로 치환될 예정입니다.
      */
-    const CONFIG_API_KEY = "API_KEY_PLACEHOLDER";
+    const CONFIG_API_KEY = "AIzaSyDfpal-sPS5EeCLYrvmeVnc_sA69L_EQ8M";
 
     let state = {
         step: 'intro',
@@ -81,7 +81,7 @@
 
     const fetchQuestions = async () => {
         // API 키가 치환되지 않은 경우에 대한 방어 로직
-        if (CONFIG_API_KEY === "API_KEY_PLACEHOLDER" || !CONFIG_API_KEY) {
+        if (CONFIG_API_KEY === "AIzaSyDfpal-sPS5EeCLYrvmeVnc_sA69L_EQ8M" || !CONFIG_API_KEY) {
             alert("API 키가 설정되지 않았습니다. GitHub Secrets 설정을 확인해주세요.");
             return;
         }
