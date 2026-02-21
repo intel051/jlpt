@@ -1,0 +1,261 @@
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, CheckCircle2, XCircle, Award, BookOpen, Clock, RefreshCcw, Loader2 } from 'lucide-react';
+
+// 프리텐다드 JP 폰트 및 글로벌 스타일 수정
+const fontStyle = `
+  @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-jp.min.css");
+  body {
+    font-family: "Pretendard JP Variable", "Pretendard JP", "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+    background-color: #F2F4F6;
+    color: #333D4B;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  .question-text {
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+  /* 언더바 강조 스타일 최적화 */
+  .underline-fix {
+    text-decoration: none;
+    border-bottom: 2px solid #3182F6;
+    padding-bottom: 2px;
+  }
+`;
+
+const fallbackQuestions = [
+  {
+    id: 1,
+    type: '문자·어휘',
+    subType: '한자 읽기',
+    question: '次の言葉의 읽기 방법으로 가장 적절한 것을 고르세요.\n\n新しいビジネスの【提案】を受け入れた。',
+    options: ['ていあん', 'ていいん', 'たいあん', 'たいいん'],
+    answer: 0,
+    explanation: '提案(ていあん): 제안. (해석: 새로운 비즈니스 제안을 받아들였다.)'
+  },
+  {
+    id: 2,
+    type: '문자·어휘',
+    subType: '문맥 규정',
+    question: '문맥에 가장 잘 어울리는 것을 고르세요.\n\n天気予報の通り、_____ 雨가 내리기 시작했다.',
+    options: ['案の定', '思いがけず', 'たちまち', 'にわかに'],
+    answer: 0,
+    explanation: '案の定(あんのじょう): 아니나 다를까, 예상대로. (해석: 일기예보대로 아니나 다를까 비가 내리기 시작했다.)'
+  }
+];
+
+export default function App() {
+  const [step, setStep] = useState('intro');
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [questions, setQuestions] = useState(fallbackQuestions);
+  const [userAnswers, setUserAnswers] = useState(new Array(fallbackQuestions.length).fill(null));
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = fontStyle;
+    document.head.appendChild(styleSheet);
+    return () => { document.head.removeChild(styleSheet) };
+  }, []);
+
+  const fetchWithRetry = async (url, options, retries = 5) => {
+    const delays = [1000, 2000, 4000, 8000, 16000];
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        await new Promise(res => setTimeout(res, delays[i]));
+      }
+    }
+  };
+
+  const handleStart = async () => {
+    setIsGenerating(true);
+    try {
+      const apiKey = ""; 
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      
+      const prompt = `JLPT N2 수준의 객관식 문제 4개를 무작위로 생성해줘.
+      구성: 문자·어휘 2문제, 문법 1문제, 독해 1문제.
+      중요: 문제 텍스트에 HTML 태그(<u> 등)를 절대 사용하지 마세요. 강조가 필요한 경우 【 】 를 사용하거나 '_____' (언더바 5개)를 사용하세요.
+      모든 설명과 질문 발문은 한국어로 작성하되, 일본어 예문과 단어는 정확한 일본어(가나/한자)로 작성하세요.`;
+
+      const payload = {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                id: { type: "INTEGER" },
+                type: { type: "STRING" },
+                subType: { type: "STRING" },
+                question: { type: "STRING" },
+                options: { type: "ARRAY", items: { type: "STRING" } },
+                answer: { type: "INTEGER" },
+                explanation: { type: "STRING" }
+              },
+              required: ["id", "type", "subType", "question", "options", "answer", "explanation"]
+            }
+          }
+        }
+      };
+
+      const result = await fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (generatedText) {
+        const newQuestions = JSON.parse(generatedText);
+        setQuestions(newQuestions);
+        setUserAnswers(new Array(newQuestions.length).fill(null));
+      }
+    } catch (error) {
+      setQuestions(fallbackQuestions);
+      setUserAnswers(new Array(fallbackQuestions.length).fill(null));
+    } finally {
+      setIsGenerating(false);
+      setStep('quiz');
+      setCurrentQIndex(0);
+      setSelectedOption(null);
+    }
+  };
+
+  const handleSelect = (index) => {
+    setSelectedOption(index);
+  };
+
+  const handleNext = () => {
+    const newAnswers = [...userAnswers];
+    newAnswers[currentQIndex] = selectedOption;
+    setUserAnswers(newAnswers);
+
+    if (currentQIndex < questions.length - 1) {
+      setCurrentQIndex(currentQIndex + 1);
+      setSelectedOption(newAnswers[currentQIndex + 1]); 
+    } else {
+      setStep('result');
+    }
+  };
+
+  const calculateScore = () => {
+    let correct = 0;
+    userAnswers.forEach((ans, idx) => {
+      if (ans === questions[idx].answer) correct++;
+    });
+    return Math.round((correct / questions.length) * 100);
+  };
+
+  if (step === 'intro') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center animate-in fade-in duration-500">
+        <div className="w-full max-w-md bg-white rounded-[24px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+          <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <BookOpen size={32} />
+          </div>
+          <h1 className="text-2xl font-bold text-[#191F28] mb-4 tracking-tight">JLPT N2 모의고사</h1>
+          <p className="text-[#4E5968] mb-8 leading-relaxed text-sm">N2 수준의 모의고사를 풀어보세요.<br/>AI가 실시간으로 문제를 생성합니다.</p>
+          <button 
+            onClick={handleStart}
+            disabled={isGenerating}
+            className={`w-full font-semibold py-4 rounded-xl transition-colors text-lg flex items-center justify-center ${
+              isGenerating ? 'bg-[#E5E8EB] text-[#8B95A1]' : 'bg-[#3182F6] text-white hover:bg-[#1B64DA]'
+            }`}
+          >
+            {isGenerating ? <><Loader2 className="animate-spin mr-2" />문제 출제 중...</> : '새로운 문제 시작'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'quiz') {
+    const question = questions[currentQIndex];
+    return (
+      <div className="flex flex-col min-h-screen p-4 sm:p-6 sm:max-w-xl sm:mx-auto">
+        <div className="mb-6 pt-4">
+          <div className="w-full bg-[#E5E8EB] h-2 rounded-full overflow-hidden">
+            <div className="bg-[#3182F6] h-full transition-all duration-300" style={{ width: `${(currentQIndex / questions.length) * 100}%` }} />
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="mb-6">
+            <div className="flex gap-2 mb-3">
+              <span className="bg-[#E8F3FF] text-[#1B64DA] text-xs font-bold px-2.5 py-1 rounded-md">{question.type}</span>
+              <span className="bg-[#F2F4F6] text-[#4E5968] text-xs font-medium px-2.5 py-1 rounded-md">{question.subType}</span>
+            </div>
+            <h2 className="text-xl font-bold text-[#191F28] question-text whitespace-pre-wrap leading-relaxed">
+              {question.question}
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {question.options.map((option, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSelect(idx)}
+                className={`w-full text-left p-5 rounded-2xl border-2 transition-all ${
+                  selectedOption === idx ? 'border-[#3182F6] bg-[#E8F3FF] text-[#1B64DA] font-semibold shadow-sm' : 'border-[#E5E8EB] bg-white text-[#333D4B]'
+                }`}
+              >
+                <span className="inline-block w-6 text-[#8B95A1]">{idx + 1}.</span> {option}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-8 pb-4">
+          <button 
+            onClick={handleNext}
+            disabled={selectedOption === null}
+            className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${selectedOption !== null ? 'bg-[#3182F6] text-white shadow-md active:scale-[0.98]' : 'bg-[#E5E8EB] text-[#B0B8C1]'}`}
+          >
+            {currentQIndex === questions.length - 1 ? '결과 보기' : '다음 문제'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const score = calculateScore();
+  return (
+    <div className="flex flex-col min-h-screen p-4 sm:p-6 sm:max-w-2xl sm:mx-auto pb-24">
+      <div className="bg-white rounded-[24px] p-8 shadow-sm text-center mb-6">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${score >= 50 ? 'bg-[#E8F3FF] text-[#3182F6]' : 'bg-[#FEECEF] text-[#F04452]'}`}>
+          <Award size={32} />
+        </div>
+        <div className="text-5xl font-bold text-[#191F28] mb-2">{score}<span className="text-2xl font-medium">점</span></div>
+        <p className="text-[#4E5968] font-medium">{score >= 50 ? '합격권입니다! 훌륭해요 🎉' : '조금 더 복습해볼까요? 💪'}</p>
+      </div>
+      <div className="space-y-4">
+        {questions.map((q, idx) => (
+          <div key={idx} className="bg-white rounded-2xl p-5 shadow-sm border border-[#F2F4F6]">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-xs font-bold text-[#8B95A1] px-2 py-1 bg-[#F9FAFB] rounded">QUESTION {idx + 1}</span>
+              {userAnswers[idx] === q.answer ? (
+                <span className="flex items-center text-[#04B014] text-xs font-bold"><CheckCircle2 size={14} className="mr-1" /> 정답</span>
+              ) : (
+                <span className="flex items-center text-[#F04452] text-xs font-bold"><XCircle size={14} className="mr-1" /> 오답</span>
+              )}
+            </div>
+            <p className="font-semibold text-[#191F28] mb-4 leading-relaxed">{q.question}</p>
+            <div className="bg-[#F2F4F6] p-4 rounded-xl text-sm leading-relaxed">
+              <span className="font-bold text-[#3182F6] block mb-2 underline decoration-2 underline-offset-4">정답: {q.options[q.answer]}</span>
+              <p className="text-[#4E5968]">{q.explanation}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white to-transparent sm:max-w-2xl sm:mx-auto">
+        <button onClick={() => setStep('intro')} className="w-full bg-[#191F28] text-white py-4 rounded-xl font-semibold shadow-lg hover:bg-[#333D4B] transition-colors">다시 풀기</button>
+      </div>
+    </div>
+  );
+}
