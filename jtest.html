@@ -41,14 +41,15 @@
 <div id="app" class="min-h-screen flex flex-col items-center"></div>
 
 <script>
-    const apiKey = ""; 
+    // API 키를 코드에 직접 넣지 않고 브라우저 저장소에서 가져옵니다.
     let state = {
         step: 'intro',
         questions: [],
         currentIdx: 0,
         userAnswers: [],
         selectedOption: null,
-        isGenerating: false
+        isGenerating: false,
+        apiKey: localStorage.getItem('GEMINI_API_KEY') || ""
     };
 
     const fallbackQuestions = [
@@ -56,9 +57,9 @@
             type: '문자·어휘',
             subType: '한자 읽기',
             question: '次の言葉의 읽기 방법으로 가장 적합한 것을 고르세요.\n\n新しいビジネスの【提案】を受け入れた。',
-            options: ['てい안', 'てい인', 'たい안', 'たい인'],
+            options: ['てい안', 'て이인', 'たい안', 'たい인'],
             answer: 0,
-            explanation: '提案(ていあん): 제안. (해석: 새로운 비즈니스 제안을 받아들였다.)'
+            explanation: '提案(てい안): 제안. (해석: 새로운 비즈니스 제안을 받아들였다.)'
         }
     ];
 
@@ -73,12 +74,26 @@
         lucide.createIcons();
     };
 
+    // 사용자가 입력한 API 키 저장 함수
+    window.saveApiKey = () => {
+        const input = document.getElementById('api-key-input');
+        if (input.value) {
+            localStorage.setItem('GEMINI_API_KEY', input.value);
+            state.apiKey = input.value;
+            render();
+        }
+    };
+
     const fetchQuestions = async () => {
+        if (!state.apiKey) {
+            alert("API 키를 먼저 입력해주세요.");
+            return;
+        }
         state.isGenerating = true;
         render();
 
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${state.apiKey}`;
             const prompt = "JLPT N2 수준의 객관식 문제 4개를 생성해줘. JSON 배열 형식으로만 응답해. 각 객체는 type, subType, question, options(4개), answer(0-3), explanation(한국어) 필드를 가져야 해.";
             
             const response = await fetch(url, {
@@ -111,11 +126,23 @@
                 <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
                     <i data-lucide="book-open" size="32"></i>
                 </div>
-                <h1 class="text-2xl font-bold mb-4">JLPT N2 모의고사</h1>
-                <p class="text-gray-500 mb-8 text-sm leading-relaxed">AI가 실시간으로 문제를 생성해줍니다.</p>
+                <h1 class="text-2xl font-bold mb-4">JLPT N2 무한 모의고사</h1>
+                
+                ${!state.apiKey ? `
+                    <div class="mb-6 text-left">
+                        <label class="text-xs font-bold text-gray-400 mb-1 block">Gemini API Key 필요</label>
+                        <input id="api-key-input" type="password" placeholder="API 키를 입력하세요" class="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500">
+                        <button onclick="saveApiKey()" class="mt-2 w-full text-sm text-blue-500 font-bold py-2">키 저장하기</button>
+                    </div>
+                ` : `
+                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">AI가 실시간으로 문제를 생성합니다.</p>
+                `}
+
                 <button onclick="fetchQuestions()" ${state.isGenerating ? 'disabled' : ''} class="btn-primary w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center">
                     ${state.isGenerating ? '<i data-lucide="loader-2" class="animate-spin-custom mr-2"></i> 문제 출제 중...' : '새로운 문제 시작'}
                 </button>
+                
+                ${state.apiKey ? `<button onclick="localStorage.removeItem('GEMINI_API_KEY'); location.reload();" class="mt-4 text-xs text-gray-400 underline">API 키 재설정</button>` : ''}
             </div>
         </div>
     `;
@@ -173,8 +200,8 @@
                         </div>
                     `).join('')}
                 </div>
-                <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md">
-                    <button onclick="location.reload()" class="btn-primary w-full max-w-2xl mx-auto block py-4 rounded-xl font-bold shadow-lg text-center">처음으로</button>
+                <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md text-center">
+                    <button onclick="location.reload()" class="btn-primary w-full max-w-2xl mx-auto block py-4 rounded-xl font-bold shadow-lg">처음으로</button>
                 </div>
             </div>
         `;
