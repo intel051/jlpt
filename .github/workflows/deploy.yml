@@ -1,0 +1,25 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # 코드가 main 브랜치에 올라올 때마다 실행됩니다
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject API Key
+        run: |
+          # test.html 파일 안의 'API_KEY_PLACEHOLDER'를 실제 Secret 키로 교체합니다.
+          sed -i "s/API_KEY_PLACEHOLDER/${{ secrets.GEMINI_API_KEY }}/g" test.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages # 실제 사이트는 gh-pages 브랜치에서 운영됩니다.
