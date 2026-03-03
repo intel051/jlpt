@@ -1,16 +1,22 @@
-// api/vocab.js
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
   const { level } = req.body;
   const apiKey = process.env.GEMINI_API_KEY;
 
-  if (!apiKey) return res.status(500).json({ error: "API 키 누락" });
+  if (!apiKey) {
+    return res.status(500).json({ error: "Vercel Environment Variable 'GEMINI_API_KEY' is missing." });
+  }
 
-  const systemInstruction = "You are a Japanese vocabulary expert. Generate 20 random JLPT words in JSON format.";
-  const userQuery = `Generate 20 random high-frequency words for JLPT N${level}. Include kanji, kana, korean_meaning, part_of_speech, example_jp, and example_kr.`;
+  const systemInstruction = "You are a professional Japanese tutor. Generate 20 high-frequency JLPT vocabulary words. Output strictly in JSON format.";
+  const userQuery = `Generate 20 random high-frequency words for JLPT N${level || 2}. Include kanji, kana, korean_meaning, part_of_speech, example_jp, and example_kr. Return as a JSON array.`;
 
   try {
+    // Using Gemini 2.5 Flash Preview model
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -18,31 +24,24 @@ export default async function handler(req, res) {
           contents: [{ parts: [{ text: userQuery }] }],
           systemInstruction: { parts: [{ text: systemInstruction }] },
           generationConfig: { 
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  "kanji": { "type": "STRING" },
-                  "kana": { "type": "STRING" },
-                  "korean_meaning": { "type": "STRING" },
-                  "part_of_speech": { "type": "STRING" },
-                  "example_jp": { "type": "STRING" },
-                  "example_kr": { "type": "STRING" }
-                },
-                required: ["kanji", "kana", "korean_meaning", "part_of_speech", "example_jp", "example_kr"]
-              }
-            }
+            responseMimeType: "application/json"
           }
         })
       }
     );
 
-    const data = await response.json();
-    const words = JSON.parse(data.candidates[0].content.parts[0].text);
-    res.status(200).json(words);
+    if (!response.ok) {
+      const errorData = await response.json();
+      return res.status(response.status).json({ error: "Gemini API failure", detail: errorData });
+    }
+
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!text) throw new Error("No response text from AI");
+
+    res.status(200).json(JSON.parse(text));
   } catch (e) {
-    res.status(500).json({ error: "서버 오류 발생" });
+    res.status(500).json({ error: "Server Error", message: e.message });
   }
 }
