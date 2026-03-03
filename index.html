@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>JLPT Vocab Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -12,298 +12,281 @@
                 extend: {
                     colors: {
                         'toss-blue': '#3182F6',
-                        'toss-gray': '#F2F4F6',
-                        'toss-dark': '#191F28',
+                        'toss-bg': '#F2F4F6',
+                        'toss-text': '#191F28',
                         'toss-muted': '#8B95A1',
+                        'toss-card': '#FFFFFF',
                     },
-                    borderRadius: {
-                        '3xl': '24px',
-                    }
                 },
             },
         };
     </script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        
         body {
-            font-family: 'Pretendard', sans-serif;
+            font-family: 'Pretendard', -apple-system, sans-serif;
             background-color: #F2F4F6;
             color: #191F28;
+            -webkit-font-smoothing: antialiased;
             -webkit-tap-highlight-color: transparent;
         }
-        .app-card {
-            background: white;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+        /* Smooth View Transitions */
+        .view-content {
+            animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .view-transition {
-            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(40px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .skeleton-pulse {
+
+        /* Skeleton Pulse */
+        .skeleton {
             background: linear-gradient(90deg, #F2F4F6 25%, #E5E8EB 50%, #F2F4F6 75%);
             background-size: 200% 100%;
-            animation: pulse 1.5s infinite;
+            animation: skeleton-pulse 1.8s infinite;
         }
-        @keyframes pulse {
+
+        @keyframes skeleton-pulse {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
-        .tab-active {
-            color: #3182F6;
-            position: relative;
-        }
-        .tab-active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 20px;
-            height: 3px;
-            background-color: #3182F6;
-            border-radius: 2px;
-        }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
-    </style>
-    
-    <script type="module">
-        // Local Storage Keys
-        const DEVICE_ID_KEY = 'jlpt_v2_device_id';
-        const WORDS_KEY = 'jlpt_v2_saved_lists'; 
-        const FOLDERS_KEY = 'jlpt_v2_folders'; 
-        const STATS_KEY = 'jlpt_v2_stats';
-        const WRONG_WORDS_KEY = 'jlpt_v2_wrong_words';
-        const MANUAL_WORDS_KEY = 'jlpt_v2_manual_words';
-
-        // State
-        let selectedLevel = 2;
-        let currentView = 'generator'; 
-        let generatedWords = [];
-        let savedWordLists = []; 
-        let wordFolders = []; 
-        let selectedFolderId = null; 
-        let quizWords = [];
-        let currentQuestionIndex = 0;
-        let quizScore = 0;
-        let stats = { totalAttempts: 0, totalCorrect: 0, overallRate: 0 };
-        let wrongWords = []; 
-        let manualSavedWords = []; 
-        let isViewingWrongWords = false;
-        let isAppReady = false;
-
-        const contentContainer = document.getElementById('content-container');
-
-        // Utils
-        const generateUniqueId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
         
-        function saveToLocal(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
-        function loadFromLocal(key, defaultVal) {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : defaultVal;
-        }
+        .active-tab { color: #3182F6 !important; }
+        .active-tab i { transform: translateY(-2px); }
+        
+        .button-bounce:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="flex flex-col items-center">
 
-        // Logic
-        function setupApp() {
-            wordFolders = loadFromLocal(FOLDERS_KEY, []);
-            if (wordFolders.length === 0) {
-                const id = generateUniqueId();
-                wordFolders.push({ id, name: '기본 단어장', createdAt: new Date().toISOString() });
-                saveToLocal(FOLDERS_KEY, wordFolders);
-            }
-            selectedFolderId = wordFolders[0].id;
-            savedWordLists = loadFromLocal(WORDS_KEY, []);
-            manualSavedWords = loadFromLocal(MANUAL_WORDS_KEY, []);
-            wrongWords = loadFromLocal(WRONG_WORDS_KEY, []);
+    <div id="app" class="w-full max-w-md min-h-screen bg-white flex flex-col relative shadow-2xl overflow-hidden">
+        
+        <!-- Global Toast -->
+        <div id="toast" class="fixed top-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-toss-dark/90 bg-gray-900 text-white text-sm font-bold rounded-full shadow-2xl z-50 opacity-0 transition-all duration-500 pointer-events-none translate-y-[-20px]"></div>
+
+        <!-- Header -->
+        <header class="px-6 pt-14 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-30">
+            <h1 class="text-2xl font-black tracking-tight text-toss-text">JLPT Master</h1>
+            <div id="score-badge" class="bg-blue-50 text-toss-blue px-3 py-1.5 rounded-full text-[11px] font-black uppercase">정답률 0%</div>
+        </header>
+
+        <!-- Main Content Section -->
+        <main id="main-content" class="flex-1 px-6 pb-36 overflow-y-auto no-scrollbar">
+            <!-- Dynamic Content -->
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-0 w-full max-w-md bg-white/90 backdrop-blur-3xl border-t border-gray-100 px-10 pt-4 pb-10 flex justify-around items-center safe-area-bottom z-40">
+            <button onclick="window.nav('generator')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-all duration-300" id="nav-generator">
+                <i class="fas fa-sparkles text-xl"></i>
+                <span class="text-[10px] font-black">생성</span>
+            </button>
+            <button onclick="window.nav('lists')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-all duration-300" id="nav-lists">
+                <i class="fas fa-archive text-xl"></i>
+                <span class="text-[10px] font-black">보관함</span>
+            </button>
+            <button onclick="window.nav('quiz')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-all duration-300" id="nav-quiz">
+                <i class="fas fa-bolt-lightning text-xl"></i>
+                <span class="text-[10px] font-black">퀴즈</span>
+            </button>
+        </nav>
+    </div>
+
+    <script type="module">
+        const state = {
+            view: 'generator',
+            level: 2,
+            loading: false,
+            words: [],
+            saved: JSON.parse(localStorage.getItem('jlpt_v3_saved') || '[]'),
+            stats: JSON.parse(localStorage.getItem('jlpt_v3_stats') || '{"c":0, "t":0}')
+        };
+
+        const main = document.getElementById('main-content');
+        const toast = document.getElementById('toast');
+
+        const showToast = (msg) => {
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0', 'translate-y-[-20px]');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-[-20px]');
+            }, 2500);
+        };
+
+        const updateUI = () => {
+            // Update Stats
+            const rate = state.stats.t === 0 ? 0 : Math.round((state.stats.c / state.stats.t) * 100);
+            document.getElementById('score-badge').textContent = `정답률 ${rate}%`;
             
-            const loadedStats = loadFromLocal(STATS_KEY, { totalAttempts: 0, totalCorrect: 0 });
-            stats = { ...loadedStats, overallRate: loadedStats.totalAttempts > 0 ? Math.round((loadedStats.totalCorrect / loadedStats.totalAttempts) * 100) : 0 };
+            // Update Nav
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active-tab'));
+            document.getElementById(`nav-${state.view}`).classList.add('active-tab');
+
+            if (state.loading) return renderLoading();
             
-            isAppReady = true;
-            renderApp();
-        }
-
-        async function generateWords() {
-            renderLoadingState();
-            try {
-                const response = await fetch('/api/vocab', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ level: selectedLevel })
-                });
-                if (!response.ok) throw new Error();
-                generatedWords = await response.json();
-                renderApp();
-            } catch (e) {
-                showError("서버와의 통신이 원활하지 않습니다.");
-                renderApp();
+            switch(state.view) {
+                case 'generator': renderGenerator(); break;
+                case 'lists': renderLists(); break;
+                case 'quiz': renderQuiz(); break;
             }
-        }
+        };
 
-        // UI Handlers
-        function renderLoadingState() {
-            contentContainer.innerHTML = `
-                <div class="view-transition space-y-4">
-                    <div class="h-48 skeleton-pulse rounded-3xl w-full"></div>
-                    <div class="space-y-3">
-                        ${Array(4).fill(0).map(() => `<div class="h-16 skeleton-pulse rounded-2xl w-full"></div>`).join('')}
+        const renderLoading = () => {
+            main.innerHTML = `
+                <div class="view-content space-y-6 pt-4">
+                    <div class="h-8 w-40 skeleton rounded-lg"></div>
+                    <div class="h-52 skeleton rounded-[32px] w-full"></div>
+                    <div class="space-y-4">
+                        ${[1,2,3,4,5].map(() => `<div class="h-20 skeleton rounded-3xl w-full"></div>`).join('')}
                     </div>
                 </div>
             `;
-        }
+        };
 
-        function showError(msg) {
-            const err = document.getElementById('error-message');
-            err.textContent = msg;
-            err.classList.remove('hidden');
-            setTimeout(() => err.classList.add('hidden'), 3000);
-        }
+        const renderGenerator = () => {
+            main.innerHTML = `
+                <div class="view-content pt-4">
+                    <section class="mb-8">
+                        <p class="text-[13px] font-black text-toss-muted mb-3 ml-1 uppercase tracking-wider">JLPT LEVEL</p>
+                        <div class="flex gap-2">
+                            ${[1,2,3,4].map(n => `
+                                <button onclick="window.setLevel(${n})" class="flex-1 py-4 rounded-2xl font-black text-sm transition-all border-2 ${state.level === n ? 'bg-toss-blue text-white border-toss-blue shadow-lg shadow-blue-200' : 'bg-white text-toss-muted border-gray-50'}">N${n}</button>
+                            `).join('')}
+                        </div>
+                    </section>
 
-        function renderApp() {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('tab-active');
-                if (btn.dataset.view === currentView) btn.classList.add('tab-active');
-            });
-
-            if (currentView === 'generator') renderGenerator();
-            else if (currentView === 'lists') renderLists();
-            else if (currentView === 'quiz') renderQuiz();
-        }
-
-        function renderGenerator() {
-            contentContainer.innerHTML = `
-                <div class="view-transition">
-                    <div class="flex space-x-2 mb-6">
-                        ${[1,2,3,4].map(n => `
-                            <button onclick="window.setLevel(${n})" class="flex-1 py-3 rounded-2xl font-bold transition-all ${selectedLevel === n ? 'bg-toss-blue text-white shadow-lg' : 'bg-white text-toss-muted hover:bg-gray-50'}">N${n}</button>
-                        `).join('')}
-                    </div>
-                    
-                    <button onclick="window.fetchWords()" class="w-full py-4 mb-8 bg-toss-blue text-white rounded-3xl font-bold text-lg shadow-xl hover:bg-blue-600 active:scale-95 transition-all">
-                        단어 20개 생성하기
+                    <button onclick="window.generate()" class="w-full py-5 bg-toss-blue text-white rounded-[28px] font-black text-lg shadow-xl shadow-blue-100 button-bounce transition-all mb-10">
+                        단어 20개 가져오기
                     </button>
 
-                    ${generatedWords.length > 0 ? `
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-xl font-bold">N${selectedLevel} 추천 단어</h2>
-                            <div class="flex space-x-2">
-                                <button onclick="window.startQuiz(0)" class="w-10 h-10 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center"><i class="fas fa-play"></i></button>
-                                <button onclick="window.saveCurrentList()" class="w-10 h-10 bg-blue-50 text-toss-blue rounded-full flex items-center justify-center"><i class="fas fa-save"></i></button>
-                            </div>
+                    ${state.words.length > 0 ? `
+                        <div class="flex justify-between items-center mb-6 px-1">
+                            <h2 class="text-xl font-black text-toss-text">오늘의 추천 단어</h2>
+                            <button onclick="window.saveAll()" class="text-toss-blue text-xs font-black">모두 저장</button>
                         </div>
-                        <div class="space-y-3 pb-24">
-                            ${generatedWords.map((w, i) => renderWordItem(w, i)).join('')}
+                        <div class="space-y-3">
+                            ${state.words.map((w, i) => `
+                                <div class="p-5 rounded-[28px] bg-toss-bg/50 border border-white flex justify-between items-center transition-all">
+                                    <div class="flex flex-col gap-0.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[17px] font-black">${w.kanji}</span>
+                                            <span class="text-[11px] text-toss-blue font-bold px-1.5 py-0.5 bg-blue-50 rounded-md">${w.kana}</span>
+                                        </div>
+                                        <p class="text-[14px] text-toss-muted font-medium">${w.korean_meaning}</p>
+                                    </div>
+                                    <button onclick="window.saveOne(${i})" class="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-toss-blue button-bounce"><i class="fas fa-plus text-xs"></i></button>
+                                </div>
+                            `).join('')}
                         </div>
                     ` : `
-                        <div class="flex flex-col items-center justify-center py-20 text-toss-muted">
-                            <i class="fas fa-sparkles text-4xl mb-4 opacity-20"></i>
-                            <p>새로운 단어를 생성해보세요.</p>
+                        <div class="flex flex-col items-center justify-center py-24 text-toss-muted opacity-30">
+                            <i class="fas fa-wand-magic-sparkles text-5xl mb-4"></i>
+                            <p class="text-sm font-black">버튼을 눌러 단어를 생성하세요</p>
                         </div>
                     `}
                 </div>
             `;
-        }
-
-        function renderWordItem(w, i) {
-            return `
-                <div class="app-card p-5 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center">
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xl font-bold">${w.kanji}</span>
-                            <span class="text-sm text-toss-blue font-medium">【${w.kana}】</span>
-                        </div>
-                        <p class="text-toss-muted text-sm mt-1">${w.korean_meaning}</p>
-                    </div>
-                    <button onclick="window.toggleDetail(${i})" class="text-toss-gray bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-chevron-down text-xs text-toss-muted"></i></button>
-                </div>
-            `;
-        }
-
-        function renderLists() {
-            const folder = wordFolders.find(f => f.id === selectedFolderId);
-            contentContainer.innerHTML = `
-                <div class="view-transition">
-                    <div class="app-card p-6 rounded-3xl bg-toss-dark text-white mb-6">
-                        <p class="text-toss-muted text-sm mb-1">나의 정답률</p>
-                        <h3 class="text-3xl font-bold">${stats.overallRate}%</h3>
-                        <div class="mt-4 flex space-x-4 text-sm opacity-80">
-                            <span>시도 ${stats.totalAttempts}회</span>
-                            <span>정답 ${stats.totalCorrect}개</span>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold">${folder.name}</h2>
-                        <button onclick="window.addFolder()" class="text-toss-blue font-bold text-sm">+ 폴더 추가</button>
-                    </div>
-
-                    <div class="space-y-3 pb-24">
-                        ${manualSavedWords.filter(m => m.folderId === selectedFolderId).length > 0 
-                            ? manualSavedWords.filter(m => m.folderId === selectedFolderId).map(m => renderSavedItem(m)).join('')
-                            : `<p class="text-center py-10 text-toss-muted">저장된 단어가 없습니다.</p>`}
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderSavedItem(m) {
-            return `
-                <div class="app-card p-5 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center">
-                    <div>
-                        <span class="text-lg font-bold">${m.word.kanji}</span>
-                        <p class="text-toss-muted text-sm">${m.word.korean_meaning}</p>
-                    </div>
-                    <button onclick="window.removeSaved('${m.id}')" class="text-red-400"><i class="fas fa-trash-alt"></i></button>
-                </div>
-            `;
-        }
-
-        // Global functions for HTML
-        window.fetchWords = generateWords;
-        window.setLevel = (l) => { selectedLevel = l; renderApp(); };
-        window.switchView = (v) => { currentView = v; renderApp(); };
-        window.saveCurrentList = () => {
-            if (generatedWords.length === 0) return;
-            const newItems = generatedWords.map(w => ({ id: generateUniqueId(), folderId: selectedFolderId, word: w, createdAt: new Date().toISOString() }));
-            manualSavedWords = [...manualSavedWords, ...newItems];
-            saveToLocal(MANUAL_WORDS_KEY, manualSavedWords);
-            alert("저장되었습니다.");
         };
 
-        window.onload = setupApp;
+        const renderLists = () => {
+            main.innerHTML = `
+                <div class="view-content pt-4">
+                    <h2 class="text-2xl font-black mb-6 px-1">내 보관함 <span class="text-toss-blue ml-1">${state.saved.length}</span></h2>
+                    <div class="space-y-3">
+                        ${state.saved.length > 0 ? state.saved.map((w, i) => `
+                            <div class="p-6 rounded-[32px] bg-white border border-gray-100 flex justify-between items-center shadow-sm">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-[18px] font-black">${w.kanji}</span>
+                                        <span class="text-[11px] text-toss-blue font-bold">${w.kana}</span>
+                                    </div>
+                                    <p class="text-sm text-toss-muted font-medium">${w.korean_meaning}</p>
+                                </div>
+                                <button onclick="window.removeSaved(${i})" class="text-gray-200 hover:text-red-400 transition-colors p-2"><i class="fas fa-trash-can text-sm"></i></button>
+                            </div>
+                        `).join('') : '<p class="text-center py-28 text-toss-muted font-medium">저장된 단어가 아직 없네요.</p>'}
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderQuiz = () => {
+            main.innerHTML = `
+                <div class="view-content flex flex-col items-center justify-center py-24">
+                    <div class="w-24 h-24 bg-blue-50 rounded-[40px] flex items-center justify-center mb-8 rotate-3">
+                        <i class="fas fa-bolt-lightning text-4xl text-toss-blue"></i>
+                    </div>
+                    <h2 class="text-2xl font-black mb-3 text-toss-text">실전 테스트</h2>
+                    <p class="text-toss-muted text-[15px] font-medium mb-10 text-center px-10 leading-relaxed">
+                        보관된 단어 중 10개를 골라<br/>무작위 퀴즈를 진행합니다.
+                    </p>
+                    <button onclick="window.startQuiz()" class="px-12 py-5 bg-toss-blue text-white rounded-[28px] font-black text-lg shadow-xl shadow-blue-100 button-bounce transition-all">
+                        테스트 시작
+                    </button>
+                </div>
+            `;
+        };
+
+        // --- Global Actions ---
+        window.nav = (v) => { state.view = v; updateUI(); };
+        window.setLevel = (l) => { state.level = l; updateUI(); };
+        
+        window.generate = async () => {
+            state.loading = true;
+            updateUI();
+            try {
+                const res = await fetch('/api/vocab', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({level: state.level})
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '통신 오류');
+                state.words = data;
+            } catch (e) {
+                showToast(`에러: ${e.message}`);
+            } finally {
+                state.loading = false;
+                updateUI();
+            }
+        };
+
+        window.saveOne = (i) => {
+            const w = state.words[i];
+            if (!state.saved.some(s => s.kanji === w.kanji)) {
+                state.saved.unshift(w);
+                localStorage.setItem('jlpt_v3_saved', JSON.stringify(state.saved));
+                showToast(`"${w.kanji}" 저장 완료`);
+            } else {
+                showToast(`이미 있는 단어예요.`);
+            }
+        };
+
+        window.saveAll = () => {
+            const news = state.words.filter(w => !state.saved.some(s => s.kanji === w.kanji));
+            state.saved = [...news, ...state.saved];
+            localStorage.setItem('jlpt_v3_saved', JSON.stringify(state.saved));
+            showToast(`${news.length}개 단어를 보관함에 넣었어요.`);
+        };
+
+        window.removeSaved = (i) => {
+            state.saved.splice(i, 1);
+            localStorage.setItem('jlpt_v3_saved', JSON.stringify(state.saved));
+            updateUI();
+        };
+
+        // Init
+        updateUI();
     </script>
-</head>
-<body class="min-h-screen flex flex-col max-w-lg mx-auto bg-toss-gray">
-
-    <!-- Header -->
-    <header class="p-6 pt-10 bg-transparent flex justify-between items-center">
-        <h1 class="text-2xl font-extrabold tracking-tight">JLPT Master</h1>
-        <div id="error-message" class="hidden fixed top-10 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-2xl z-50 text-sm font-bold"></div>
-    </header>
-
-    <!-- Main Content -->
-    <main id="content-container" class="flex-1 px-6">
-        <!-- Renders dynamically -->
-    </main>
-
-    <!-- Bottom Nav -->
-    <nav class="fixed bottom-0 max-w-lg w-full bg-white/80 backdrop-blur-xl border-t border-gray-100 rounded-t-[40px] px-10 py-6 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
-        <button onclick="window.switchView('generator')" class="tab-btn flex flex-col items-center space-y-1 tab-active" data-view="generator">
-            <i class="fas fa-sparkles text-xl"></i>
-            <span class="text-[10px] font-bold">생성</span>
-        </button>
-        <button onclick="window.switchView('lists')" class="tab-btn flex flex-col items-center space-y-1" data-view="lists">
-            <i class="fas fa-folder text-xl"></i>
-            <span class="text-[10px] font-bold">단어장</span>
-        </button>
-        <button onclick="window.switchView('quiz')" class="tab-btn flex flex-col items-center space-y-1" data-view="quiz">
-            <i class="fas fa-graduation-cap text-xl"></i>
-            <span class="text-[10px] font-bold">퀴즈</span>
-        </button>
-    </nav>
-
 </body>
 </html>
 
