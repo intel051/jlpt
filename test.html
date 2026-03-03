@@ -79,43 +79,31 @@
         lucide.createIcons();
     };
 
-    const fetchQuestions = async () => {
-        // API 키가 치환되지 않은 경우에 대한 방어 로직
-        if (CONFIG_API_KEY === "API_KEY_PLACEHOLDER" || !CONFIG_API_KEY) {
-            alert("API 키가 설정되지 않았습니다. GitHub Secrets 설정을 확인해주세요.");
-            return;
-        }
+const fetchQuestions = async () => {
+    state.isGenerating = true;
+    render();
 
-        state.isGenerating = true;
+    try {
+        // 보안을 위해 서버를 통해 문제를 가져옵니다.
+        const response = await fetch('/api/generate');
+        
+        if (!response.ok) throw new Error();
+        
+        const data = await response.json();
+        state.questions = data;
+    } catch (e) {
+        console.error("오류 발생:", e);
+        state.questions = fallbackQuestions;
+    } finally {
+        state.isGenerating = false;
+        state.step = 'quiz';
+        state.currentIdx = 0;
+        state.userAnswers = [];
+        state.selectedOption = null;
         render();
+    }
+};
 
-        try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${CONFIG_API_KEY}`;
-            const prompt = "JLPT N2 수준의 객관식 문제 4개를 생성해줘. JSON 배열 형식으로만 응답해. 각 객체는 type, subType, question, options(4개), answer(0-3), explanation(한국어) 필드를 가져야 해.";
-            
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { responseMimeType: "application/json" }
-                })
-            });
-
-            if (!response.ok) throw new Error();
-            const data = await response.json();
-            state.questions = JSON.parse(data.candidates[0].content.parts[0].text);
-        } catch (e) {
-            state.questions = fallbackQuestions;
-        } finally {
-            state.isGenerating = false;
-            state.step = 'quiz';
-            state.currentIdx = 0;
-            state.userAnswers = [];
-            state.selectedOption = null;
-            render();
-        }
-    };
 
     const renderIntro = () => `
         <div class="flex flex-col items-center justify-center min-h-screen p-6 text-center w-full max-w-md">
