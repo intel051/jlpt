@@ -3,1343 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JLPT 단어 학습 & 퀴즈 앱</title>
-    <!-- Tailwind CSS CDN -->
+    <title>JLPT Vocab Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
-    <!-- Tailwind Custom Color Setup for robustness -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'toss-blue': '#3B82F6',
-                        'toss-green': '#22C55E', 
-                        'toss-yellow': '#FFD34C', /* 토스 스타일 강조색 추가 */
+                        'toss-blue': '#3182F6',
+                        'toss-gray': '#F2F4F6',
+                        'toss-dark': '#191F28',
+                        'toss-muted': '#8B95A1',
                     },
+                    borderRadius: {
+                        '3xl': '24px',
+                    }
                 },
             },
         };
     </script>
-
     <style>
-        /* Pretendard Font Link (사용자 환경에 따라 적용이 안 될 수 있음) */
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        
-        :root {
-            --font-pretendard: 'Pretendard', 'Pretendard JP', 'Inter', sans-serif;
-        }
-
         body {
-            font-family: var(--font-pretendard);
+            font-family: 'Pretendard', sans-serif;
+            background-color: #F2F4F6;
+            color: #191F28;
+            -webkit-tap-highlight-color: transparent;
         }
-
-        /* 커스텀 스타일 */
-        .level-button { transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .level-button.active { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(34, 197, 94, 0.3); }
-        .word-cell-kanji { min-width: 80px; }
-        
-        /* 탭 버튼 스타일 수정 */
-        .tab-button { 
-            transition: all 0.2s; 
-            border-top-left-radius: 0.75rem; 
-            border-top-right-radius: 0.75rem; 
+        .app-card {
+            background: white;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .tab-button.active { 
-            border-bottom: 3px solid #3B82F6; 
-            color: #3B82F6; 
-            font-weight: 600; 
-            background-color: white !important;
+        .view-transition {
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        
-        .answer-button { transition: all 0.2s; }
-        .answer-button:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .skeleton-pulse {
+            background: linear-gradient(90deg, #F2F4F6 25%, #E5E8EB 50%, #F2F4F6 75%);
+            background-size: 200% 100%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .tab-active {
+            color: #3182F6;
+            position: relative;
+        }
+        .tab-active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background-color: #3182F6;
+            border-radius: 2px;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
     
     <script type="module">
-        // Gemini API Configuration
-        const API_KEY = "AIzaSyDfpal-sPS5EeCLYrvmeVnc_sA69L_EQ8M"; // Canvas 환경에서 자동 주입됨
-        const API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
-        const MAX_RETRIES = 3;
-        const INITIAL_BACKOFF_MS = 1000;
-
         // Local Storage Keys
-        const DEVICE_ID_KEY = 'jlpt_device_id';
-        const WORDS_KEY = 'jlpt_saved_lists'; 
-        const FOLDERS_KEY = 'jlpt_folders'; 
-        const STATS_KEY = 'jlpt_stats';
-        const WRONG_WORDS_KEY = 'jlpt_wrong_words';
-        const MANUAL_WORDS_KEY = 'jlpt_manual_words'; // 새로 추가된 개별 단어 저장 키
+        const DEVICE_ID_KEY = 'jlpt_v2_device_id';
+        const WORDS_KEY = 'jlpt_v2_saved_lists'; 
+        const FOLDERS_KEY = 'jlpt_v2_folders'; 
+        const STATS_KEY = 'jlpt_v2_stats';
+        const WRONG_WORDS_KEY = 'jlpt_v2_wrong_words';
+        const MANUAL_WORDS_KEY = 'jlpt_v2_manual_words';
 
-        // Application State
-        let deviceId = 'loading';
-        let isAppReady = false;
+        // State
         let selectedLevel = 2;
         let currentView = 'generator'; 
         let generatedWords = [];
         let savedWordLists = []; 
-        let wordFolders = []; // 폴더 목록
-        let selectedFolderId = null; // 현재 선택된 폴더 ID
+        let wordFolders = []; 
+        let selectedFolderId = null; 
         let quizWords = [];
         let currentQuestionIndex = 0;
         let quizScore = 0;
-        let quizOptions = [];
         let stats = { totalAttempts: 0, totalCorrect: 0, overallRate: 0 };
         let wrongWords = []; 
-        let manualSavedWords = []; // 개별 저장 단어 목록
-        let isViewingWrongWords = false; 
+        let manualSavedWords = []; 
+        let isViewingWrongWords = false;
+        let isAppReady = false;
 
-        // UI Elements
-        const appContainer = document.getElementById('app');
         const contentContainer = document.getElementById('content-container');
-        const levelSelector = document.getElementById('level-selector');
-        const listTitle = document.getElementById('list-title');
-        const errorMessageDiv = document.getElementById('error-message');
-        const tabGenerator = document.getElementById('tab-generator');
-        const tabLists = document.getElementById('tab-lists');
 
-        // --- Core Utility: Safe Unique ID Generator ---
-        /** * UUID를 생성하거나 지원하지 않을 경우 타임스탬프와 랜덤 값을 조합하여 고유 ID를 생성합니다. 
-         * 이 함수는 crypto.randomUUID()를 안전하게 대체합니다.
-         */
-        function generateUniqueId() {
-            // 표준 crypto.randomUUID() 사용
-            if (window.crypto && window.crypto.randomUUID) {
-                return window.crypto.randomUUID();
-            }
-            // 폴백: 타임스탬프 + 랜덤 문자열 조합
-            return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
-        }
-
-        // --- Local Storage Functions ---
+        // Utils
+        const generateUniqueId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
         
-        /** UUID를 생성하거나 localStorage에서 가져와 deviceId를 설정 */
-        function setupDeviceId() {
-            let id = localStorage.getItem(DEVICE_ID_KEY);
-            if (!id) {
-                id = generateUniqueId(); // 안전한 ID 생성기 사용
-                localStorage.setItem(DEVICE_ID_KEY, id);
-            }
-            deviceId = id;
-            isAppReady = true;
+        function saveToLocal(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+        function loadFromLocal(key, defaultVal) {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : defaultVal;
         }
 
-        /** 폴더 목록을 localStorage에 저장 */
-        function saveFoldersToLocal() {
-            localStorage.setItem(FOLDERS_KEY, JSON.stringify(wordFolders));
-        }
-
-        /** 폴더 목록을 localStorage에서 불러오기 */
-        function loadFolders() {
-            try {
-                const data = localStorage.getItem(FOLDERS_KEY);
-                wordFolders = data ? JSON.parse(data) : [];
-                if (wordFolders.length === 0) {
-                    // 기본 폴더 생성
-                    const defaultFolderId = generateUniqueId(); // 안전한 ID 생성기 사용
-                    wordFolders.push({ id: defaultFolderId, name: '전체 단어장', createdAt: new Date().toISOString() });
-                    saveFoldersToLocal();
-                } 
-                if (!selectedFolderId) {
-                    selectedFolderId = wordFolders[0].id;
-                }
-            } catch (e) {
-                console.error("폴더 목록 로드 오류:", e);
-                wordFolders = [];
-            }
-        }
-        
-        /** 단어 목록(20개 그룹)을 localStorage에 저장 */
-        function saveWordListsToLocal() {
-            localStorage.setItem(WORDS_KEY, JSON.stringify(savedWordLists));
-        }
-        
-        /** 단어 목록(20개 그룹)을 localStorage에서 불러오기 */
-        function loadSavedWordLists() {
-            try {
-                const data = localStorage.getItem(WORDS_KEY);
-                savedWordLists = data ? JSON.parse(data) : [];
-            } catch (e) {
-                console.error("저장된 단어 목록 로드 오류:", e);
-                savedWordLists = [];
-            }
-        }
-
-        /** 개별 저장 단어 목록을 localStorage에 저장 */
-        function saveManualWordsToLocal() {
-            localStorage.setItem(MANUAL_WORDS_KEY, JSON.stringify(manualSavedWords));
-        }
-
-        /** 개별 저장 단어 목록을 localStorage에서 불러오기 */
-        function loadManualWords() {
-            try {
-                const data = localStorage.getItem(MANUAL_WORDS_KEY);
-                manualSavedWords = data ? JSON.parse(data) : [];
-            } catch (e) {
-                console.error("개별 단어 목록 로드 오류:", e);
-                manualSavedWords = [];
-            }
-        }
-        
-        /** 통계를 localStorage에 저장 */
-        function saveStatsToLocal() {
-            localStorage.setItem(STATS_KEY, JSON.stringify({
-                totalAttempts: stats.totalAttempts,
-                totalCorrect: stats.totalCorrect,
-            }));
-        }
-        
-        /** 통계를 localStorage에서 불러오기 */
-        function loadStats() {
-            try {
-                const data = localStorage.getItem(STATS_KEY);
-                if (data) {
-                    const loadedStats = JSON.parse(data);
-                    stats.totalAttempts = loadedStats.totalAttempts || 0;
-                    stats.totalCorrect = loadedStats.totalCorrect || 0;
-                    if (stats.totalAttempts > 0) {
-                        stats.overallRate = Math.round((stats.totalCorrect / stats.totalAttempts) * 100);
-                    } else {
-                        stats.overallRate = 0;
-                    }
-                }
-            } catch (e) {
-                console.error("통계 로드 오류:", e);
-                stats = { totalAttempts: 0, totalCorrect: 0, overallRate: 0 };
-            }
-        }
-
-        /** 오답 노트를 localStorage에 저장 */
-        function saveWrongWordsToLocal() {
-            localStorage.setItem(WRONG_WORDS_KEY, JSON.stringify(wrongWords));
-        }
-
-        /** 오답 노트를 localStorage에서 불러오기 */
-        function loadWrongWords() {
-            try {
-                const data = localStorage.getItem(WRONG_WORDS_KEY);
-                wrongWords = data ? JSON.parse(data) : [];
-            } catch (e) {
-                console.error("오답 노트 로드 오류:", e);
-                wrongWords = [];
-            }
-        }
-
-        /** 퀴즈 종료 시 통계 업데이트 및 저장 */
-        function updateStats(attempts, correct) {
-            stats.totalAttempts += attempts;
-            stats.totalCorrect += correct;
-            if (stats.totalAttempts > 0) {
-                stats.overallRate = Math.round((stats.totalCorrect / stats.totalAttempts) * 100);
-            } else {
-                stats.overallRate = 0;
-            }
-            saveStatsToLocal();
-        }
-
-        /** 오답 단어를 오답 노트에 추가 및 저장 */
-        function addWrongWords(newWrongWords) {
-            if (!newWrongWords || newWrongWords.length === 0) return;
-
-            newWrongWords.forEach(newWord => {
-                const exists = wrongWords.some(existingWord => existingWord.kanji === newWord.kanji);
-                if (!exists) {
-                    wrongWords.push(newWord);
-                }
-            });
-            saveWrongWordsToLocal();
-        }
-
-        // 앱 초기화 (Local Storage 로드)
+        // Logic
         function setupApp() {
-            setupDeviceId();
-            loadFolders(); // 폴더 먼저 로드
-            loadSavedWordLists();
-            loadManualWords(); // 개별 단어 로드
-            loadStats();
-            loadWrongWords();
+            wordFolders = loadFromLocal(FOLDERS_KEY, []);
+            if (wordFolders.length === 0) {
+                const id = generateUniqueId();
+                wordFolders.push({ id, name: '기본 단어장', createdAt: new Date().toISOString() });
+                saveToLocal(FOLDERS_KEY, wordFolders);
+            }
+            selectedFolderId = wordFolders[0].id;
+            savedWordLists = loadFromLocal(WORDS_KEY, []);
+            manualSavedWords = loadFromLocal(MANUAL_WORDS_KEY, []);
+            wrongWords = loadFromLocal(WRONG_WORDS_KEY, []);
+            
+            const loadedStats = loadFromLocal(STATS_KEY, { totalAttempts: 0, totalCorrect: 0 });
+            stats = { ...loadedStats, overallRate: loadedStats.totalAttempts > 0 ? Math.round((loadedStats.totalCorrect / loadedStats.totalAttempts) * 100) : 0 };
+            
+            isAppReady = true;
             renderApp();
-            console.log("앱 초기화 완료. 기기 ID:", deviceId);
-        }
-
-        // --- 폴더 관리 로직 (1. 폴더 생성/삭제/수정) ---
-
-        /** 폴더 생성 */
-        function addFolder(name) {
-            if (!name || name.trim() === '') {
-                renderModal("입력 오류", "폴더 이름을 입력해야 합니다.");
-                return;
-            }
-            const newFolder = {
-                id: generateUniqueId(), // 안전한 ID 생성기 사용
-                name: name.trim(),
-                createdAt: new Date().toISOString()
-            };
-            wordFolders.push(newFolder);
-            saveFoldersToLocal();
-            selectedFolderId = newFolder.id;
-            renderApp();
-        }
-
-        /** 폴더 이름 변경 */
-        function renameFolder(folderId, newName) {
-            if (!newName || newName.trim() === '') {
-                 renderModal("입력 오류", "새 폴더 이름을 입력해야 합니다.");
-                return;
-            }
-            const folder = wordFolders.find(f => f.id === folderId);
-            if (folder && newName.trim()) {
-                folder.name = newName.trim();
-                saveFoldersToLocal();
-                renderApp();
-            }
-        }
-
-        /** 폴더 삭제 */
-        function deleteFolder(folderId) {
-            const defaultFolderId = wordFolders[0].id;
-            const folderToDelete = wordFolders.find(f => f.id === folderId);
-            
-            if (folderId === defaultFolderId) {
-                renderModal("삭제 불가", "기본 폴더는 삭제할 수 없습니다.");
-                return;
-            }
-
-            renderModal(
-                "폴더 삭제 확인", 
-                `'${folderToDelete.name}' 폴더를 삭제하시겠습니까? 안에 있는 모든 단어 목록과 개별 단어는 '전체 단어장'으로 이동됩니다.`,
-                () => {
-                    // 1. 단어 목록 (20개 그룹) 이동:
-                    savedWordLists.forEach(list => {
-                        if (list.folderId === folderId) {
-                            list.folderId = defaultFolderId;
-                        }
-                    });
-                    saveWordListsToLocal();
-                    
-                    // 2. 개별 단어 이동:
-                    manualSavedWords.forEach(item => {
-                        if (item.folderId === folderId) {
-                            item.folderId = defaultFolderId;
-                        }
-                    });
-                    saveManualWordsToLocal();
-
-                    // 3. 폴더 삭제
-                    wordFolders = wordFolders.filter(f => f.id !== folderId);
-                    saveFoldersToLocal();
-                    
-                    // 4. 선택 폴더 재설정
-                    selectedFolderId = defaultFolderId;
-                    renderApp();
-                }
-            );
-        }
-
-        // --- Local Storage Operations (Saved Lists) ---
-        
-        /** 2. 단어 저장 시 폴더 선택 모달 표시 */
-        function showFolderSelectionModal() {
-            return new Promise(resolve => {
-                const folderOptions = wordFolders.map(folder => `
-                    <option value="${folder.id}">${folder.name}</option>
-                `).join('');
-
-                const modalHtml = `
-                    <div id="folder-select-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
-                        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                            <h3 class="text-xl font-bold text-gray-900 mb-4"><i class="fas fa-folder-plus mr-2"></i> 저장할 폴더 선택</h3>
-                            <div class="mb-6">
-                                <label for="folder-select" class="block text-sm font-medium text-gray-700 mb-1">단어 목록을 저장할 폴더를 선택하세요.</label>
-                                <select id="folder-select" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-toss-blue focus:border-toss-blue">
-                                    ${folderOptions}
-                                </select>
-                            </div>
-                            <div class="flex justify-end space-x-3">
-                                <button id="modal-cancel" class="py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition">취소</button>
-                                <button id="modal-save" class="py-2 px-4 bg-toss-green text-white font-semibold rounded-lg hover:bg-green-600 transition">여기에 저장</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                document.getElementById('custom-modal')?.remove();
-                appContainer.insertAdjacentHTML('afterend', modalHtml);
-
-                const modal = document.getElementById('folder-select-modal');
-                
-                modal.querySelector('#modal-cancel').addEventListener('click', () => {
-                    modal.remove();
-                    resolve(null); // 취소 시 null 반환
-                });
-                
-                modal.querySelector('#modal-save').addEventListener('click', () => {
-                    const selectedId = modal.querySelector('#folder-select').value;
-                    modal.remove();
-                    resolve(selectedId);
-                });
-                
-                // 기본으로 현재 선택된 폴더 선택
-                modal.querySelector('#folder-select').value = selectedFolderId;
-            });
-        }
-        
-        /** 20개 그룹 단어 목록 저장 */
-        async function saveWordList() {
-            if (!generatedWords.length) {
-                showError("저장할 단어 목록이 없습니다.");
-                return;
-            }
-
-            // 폴더 선택 모달 호출
-            const targetFolderId = await showFolderSelectionModal();
-            if (!targetFolderId) {
-                return; // 사용자가 취소함
-            }
-
-            const listData = {
-                id: generateUniqueId(), 
-                folderId: targetFolderId, 
-                level: selectedLevel,
-                words: generatedWords,
-                createdAt: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-                wordCount: generatedWords.length,
-            };
-
-            savedWordLists.push(listData);
-            savedWordLists.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            saveWordListsToLocal();
-            
-            // 저장 후 현재 뷰를 리스트 뷰로 전환하고 해당 폴더를 선택
-            selectedFolderId = targetFolderId;
-            renderModal("저장 완료", `N${selectedLevel} 단어 ${generatedWords.length}개 목록이 폴더에 저장되었습니다!`, () => {
-                currentView = 'lists';
-                isViewingWrongWords = false;
-                renderApp();
-            });
-        }
-        
-        /** 개별 단어 저장 (요청 사항) */
-        async function saveSingleWord(word) {
-            const targetFolderId = await showFolderSelectionModal();
-            if (!targetFolderId) return; // Cancelled
-
-            // 중복 확인
-            const isDuplicate = manualSavedWords.some(item => 
-                item.folderId === targetFolderId && item.word.kanji === word.kanji
-            );
-
-            if (isDuplicate) {
-                renderModal("추가 실패", `'${word.kanji}' 단어는 이미 이 폴더에 저장되어 있습니다.`);
-                return;
-            }
-
-            manualSavedWords.push({
-                id: generateUniqueId(),
-                folderId: targetFolderId,
-                word: word,
-                createdAt: new Date().toISOString()
-            });
-            saveManualWordsToLocal();
-            
-            renderModal("추가 완료", `'${word.kanji}' 단어가 폴더에 성공적으로 저장되었습니다.`);
-        }
-        
-        // --- Gemini API Call (생략) ---
-        async function fetchWithRetry(payload, retries = MAX_RETRIES) {
-             for (let i = 0; i < retries; i++) {
-                try {
-                    const apiUrl = `${API_URL_BASE}?key=${API_KEY}`;
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        const errorBody = await response.json();
-                        throw new Error(`API 응답 실패: ${response.status} ${response.statusText}`);
-                    }
-
-                    return await response.json();
-                } catch (error) {
-                    if (i < retries - 1) {
-                        const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    } else {
-                        throw new Error("API 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.");
-                    }
-                }
-            }
         }
 
         async function generateWords() {
-            const genButton = document.getElementById('generate-button');
-            const saveButton = document.getElementById('save-button');
-            if (genButton) {
-                genButton.disabled = true;
-                genButton.querySelector('#button-text').textContent = '단어 생성 중...';
-                genButton.querySelector('#loading-spinner').classList.remove('hidden');
-            }
-            if(saveButton) saveButton.classList.add('hidden'); 
-            showError(''); 
-
-            const level = selectedLevel;
-            
-            const responseSchema = {
-                type: "ARRAY",
-                description: "An array of 20 JLPT vocabulary words with examples and POS.",
-                items: {
-                    type: "OBJECT",
-                    properties: {
-                        "kanji": { "type": "STRING", "description": "The word in Kanji." },
-                        "kana": { "type": "STRING", "description": "The reading of the word in Hiragana." },
-                        "korean_meaning": { "type": "STRING", "description": "The meaning of the word in Korean." },
-                        "part_of_speech": { "type": "STRING", "description": "e.g., 名詞, 動詞, い形容詞" },
-                        "example_jp": { "type": "STRING", "description": "A short, natural example sentence in Japanese using the word." },
-                        "example_kr": { "type": "STRING", "description": "The Korean translation of the example sentence." }
-                    },
-                    required: ["kanji", "kana", "korean_meaning", "part_of_speech", "example_jp", "example_kr"]
-                }
-            };
-
-            const systemInstruction = "You are a Japanese vocabulary generation expert. Your task is to generate exactly 20 randomly selected JLPT N-level words. The output must strictly follow the provided JSON schema. Do not include any explanations, greetings, or markdown outside of the JSON object.";
-            const userQuery = `Generate 20 random, high-frequency words for JLPT N${level} from a wide variety of topics.
-
-To ensure diversity, please select words from at least 10 different categories such as: daily life, work/business, nature, emotions, food, travel, society, technology, abstract concepts, and academics.
-
-Also, the final list must contain a balanced mix of parts of speech:
-- 8 nouns (名詞)
-- 5 verbs (動詞)
-- 4 i-adjectives (い形容詞)
-- 3 na-adjectives (な形容詞)
-
-For each word, include the kanji, kana, Korean meaning, part of speech, a short Japanese example sentence, and its Korean translation.`;
-            
-            
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: responseSchema
-                },
-            };
-
+            renderLoadingState();
             try {
-                const result = await fetchWithRetry(payload);
-                
-                const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!jsonText) {
-                    throw new Error("API에서 유효한 응답을 받지 못했습니다. 다시 시도해 주세요.");
-                }
-
-                const wordData = JSON.parse(jsonText);
-                
-                if (!Array.isArray(wordData) || wordData.length === 0) {
-                    throw new Error("생성된 단어 목록이 유효하지 않습니다.");
-                }
-
-                generatedWords = wordData;
-                currentView = 'generator'; 
+                const response = await fetch('/api/vocab', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ level: selectedLevel })
+                });
+                if (!response.ok) throw new Error();
+                generatedWords = await response.json();
                 renderApp();
-
-            } catch (error) {
-                console.error("단어 생성 중 최종 오류 발생:", error);
-                showError(`오류: ${error.message}`);
-                generatedWords = [];
+            } catch (e) {
+                showError("서버와의 통신이 원활하지 않습니다.");
                 renderApp();
-
-            } finally {
-                if (genButton) {
-                    genButton.disabled = false;
-                    genButton.querySelector('#button-text').textContent = `단어 20개 생성`;
-                    genButton.querySelector('#loading-spinner').classList.add('hidden');
-                }
-                if(generatedWords.length > 0 && saveButton) saveButton.classList.remove('hidden');
             }
         }
 
-        // --- View Rendering (Router/Component System) ---
+        // UI Handlers
+        function renderLoadingState() {
+            contentContainer.innerHTML = `
+                <div class="view-transition space-y-4">
+                    <div class="h-48 skeleton-pulse rounded-3xl w-full"></div>
+                    <div class="space-y-3">
+                        ${Array(4).fill(0).map(() => `<div class="h-16 skeleton-pulse rounded-2xl w-full"></div>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function showError(msg) {
+            const err = document.getElementById('error-message');
+            err.textContent = msg;
+            err.classList.remove('hidden');
+            setTimeout(() => err.classList.add('hidden'), 3000);
+        }
 
         function renderApp() {
-            if (!isAppReady) {
-                contentContainer.innerHTML = renderLoadingScreen();
-                return;
-            }
-
-            // 탭 버튼 스타일링
-            [tabGenerator, tabLists].forEach(tab => {
-                tab.classList.remove('active', 'bg-white', 'text-toss-blue');
-                tab.classList.add('bg-gray-100', 'text-gray-700');
-            });
-            
-            let activeTab = null;
-            if (currentView === 'generator' || currentView === 'quiz') {
-                activeTab = tabGenerator;
-            } else if (currentView === 'lists') {
-                activeTab = tabLists;
-            }
-
-            if (activeTab) {
-                activeTab.classList.add('active', 'bg-white', 'text-toss-blue');
-                activeTab.classList.remove('bg-gray-100', 'text-gray-700');
-            }
-            
-            // Render the specific view
-            if (currentView === 'generator') {
-                contentContainer.innerHTML = renderGeneratorView();
-                attachGeneratorListeners();
-            } else if (currentView === 'quiz') {
-                contentContainer.innerHTML = renderQuizView();
-                attachQuizListeners();
-            } else if (currentView === 'lists') {
-                contentContainer.innerHTML = renderListsView();
-                attachListsListeners();
-            }
-        }
-
-        // --- Utility Functions ---
-        function showError(message) {
-            errorMessageDiv.textContent = message;
-            if (message) {
-                errorMessageDiv.classList.remove('hidden');
-            } else {
-                errorMessageDiv.classList.add('hidden');
-            }
-        }
-
-        function renderLoadingScreen() {
-            return `
-                <div class="flex flex-col items-center justify-center h-64">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-toss-blue"></div>
-                    <p class="mt-4 text-lg text-gray-600">앱 데이터 준비 중...</p>
-                </div>
-            `;
-        }
-        
-        // Custom Input Modal (Replacing prompt())
-        function renderInputModal(title, initialValue = '', onConfirm) {
-            const modalHtml = `
-                <div id="input-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
-                    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                        <h3 class="text-xl font-bold text-gray-900 mb-4">${title}</h3>
-                        <div class="mb-6">
-                            <input id="modal-input" type="text" value="${initialValue}" placeholder="이름을 입력하세요" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-toss-blue focus:border-toss-blue text-gray-900">
-                        </div>
-                        <div class="flex justify-end space-x-3">
-                            <button id="modal-cancel" class="py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition">취소</button>
-                            <button id="modal-confirm" class="py-2 px-4 bg-toss-green text-white font-semibold rounded-lg hover:bg-green-600 transition">확인</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('input-modal')?.remove();
-            document.getElementById('custom-modal')?.remove(); // Ensure standard modal is also removed
-            appContainer.insertAdjacentHTML('afterend', modalHtml);
-
-            const modal = document.getElementById('input-modal');
-            const input = document.getElementById('modal-input');
-            input.focus();
-            
-            const handleConfirm = () => {
-                const value = input.value.trim();
-                modal.remove();
-                onConfirm(value);
-            };
-
-            modal.querySelector('#modal-cancel').addEventListener('click', () => {
-                modal.remove();
-                onConfirm(null); // 취소 시 null 반환
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('tab-active');
+                if (btn.dataset.view === currentView) btn.classList.add('tab-active');
             });
 
-            modal.querySelector('#modal-confirm').addEventListener('click', handleConfirm);
-            
-            // Enter 키 입력 처리
-            input.addEventListener('keyup', (e) => {
-                if (e.key === 'Enter') {
-                    handleConfirm();
-                }
-            });
+            if (currentView === 'generator') renderGenerator();
+            else if (currentView === 'lists') renderLists();
+            else if (currentView === 'quiz') renderQuiz();
         }
 
-        function renderModal(title, message, onConfirm = null) {
-            let modalHtml = `
-                <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
-                    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">${title}</h3>
-                        <p class="text-gray-600 mb-6">${message}</p>
-                        <div class="flex justify-end space-x-3">
-                            ${onConfirm ? `<button id="modal-confirm" class="py-2 px-4 bg-toss-blue text-white font-semibold rounded-lg hover:bg-blue-600 transition">확인</button>` : `<button id="modal-close" class="py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition">닫기</button>`}
-                            ${onConfirm ? `<button id="modal-close" class="py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition">취소</button>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('input-modal')?.remove(); // Ensure input modal is removed
-            document.getElementById('custom-modal')?.remove();
-            
-            appContainer.insertAdjacentHTML('afterend', modalHtml);
-            const modal = document.getElementById('custom-modal');
-            
-            modal.querySelector('#modal-close')?.addEventListener('click', () => modal.remove());
-            modal.querySelector('#modal-confirm')?.addEventListener('click', () => {
-                onConfirm();
-                modal.remove();
-            });
-        }
-        // --- End Utility Functions ---
-        
-
-        function renderGeneratorView() {
-            const wordListHtml = generatedWords.length > 0 
-                ? generatedWords.map((word, index) => renderWordCard(word, index)).join('')
-                : `<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-lg">위 버튼을 눌러 단어 목록을 생성하세요.</p>`;
-
-            return `
-                <div id="generator-content">
-                    <!-- Level Selection Buttons -->
-                    <div id="level-selector" class="flex justify-around space-x-2 mb-8">
-                        ${[1, 2, 3, 4].map(n => `
-                            <button data-level="${n}" class="level-button w-1/4 py-3 text-lg font-semibold rounded-xl transition duration-200 focus:outline-none focus:ring-4 focus:ring-green-500/50 ${selectedLevel === n ? 'active bg-toss-green text-gray-900' : 'bg-gray-200 text-gray-700 hover:bg-green-100 hover:text-toss-green'}">
-                                N${n}
-                            </button>
+        function renderGenerator() {
+            contentContainer.innerHTML = `
+                <div class="view-transition">
+                    <div class="flex space-x-2 mb-6">
+                        ${[1,2,3,4].map(n => `
+                            <button onclick="window.setLevel(${n})" class="flex-1 py-3 rounded-2xl font-bold transition-all ${selectedLevel === n ? 'bg-toss-blue text-white shadow-lg' : 'bg-white text-toss-muted hover:bg-gray-50'}">N${n}</button>
                         `).join('')}
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="flex space-x-2 mb-8">
-                        <button id="generate-button" class="flex-grow py-4 text-xl font-bold bg-toss-blue text-white rounded-xl shadow-lg hover:bg-blue-600 transition duration-300 transform active:scale-98 focus:outline-none focus:ring-4 focus:ring-blue-500/50 flex items-center justify-center">
-                            <span id="button-text">단어 20개 생성</span>
-                            <div id="loading-spinner" class="hidden animate-spin rounded-full h-6 w-6 border-b-2 border-white ml-2"></div>
-                        </button>
-                        <button id="start-quiz-button" class="py-4 px-4 text-xl font-bold bg-yellow-400 text-gray-900 rounded-xl shadow-lg hover:bg-yellow-500 transition duration-300 transform active:scale-98 focus:outline-none focus:ring-4 focus:ring-yellow-500/50 ${generatedWords.length === 0 ? 'hidden' : ''}">
-                            <i class="fas fa-question-circle"></i>
-                        </button>
-                        <button id="save-button" class="py-4 px-4 text-xl font-bold bg-gray-300 text-gray-800 rounded-xl shadow-lg hover:bg-gray-400 transition duration-300 transform active:scale-98 focus:outline-none focus:ring-4 focus:ring-gray-500/50 ${generatedWords.length === 0 ? 'hidden' : ''}">
-                            <i class="fas fa-save"></i>
-                        </button>
-                    </div>
-
-                    <!-- Word List Container -->
-                    <div class="mt-4">
-                        <h2 id="list-title" class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
-                            N${selectedLevel} 단어 목록 (총 ${generatedWords.length}개)
-                        </h2>
-                        
-                        <div id="word-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
-                            ${wordListHtml}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderWordCard(word, index) {
-            const displayIndex = typeof index === 'number' ? index + 1 : '';
-            return `
-                <div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-md transition duration-200 cursor-pointer" data-index="${index}">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center">
-                            <span class="flex-shrink-0 text-sm font-medium text-toss-green bg-green-50 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">${displayIndex}</span>
-                            <div class="flex flex-col min-w-0">
-                                <div class="flex items-baseline mb-0.5">
-                                    <span class="word-cell-kanji text-xl font-bold text-gray-900 mr-2 break-words">${word.kanji}</span>
-                                    <span class="text-sm text-blue-600 font-medium break-words">【${word.kana}】</span>
-                                </div>
-                                <div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div>
-                            </div>
-                        </div>
-                        <i class="fas fa-chevron-down text-gray-400 transform transition duration-300"></i>
                     </div>
                     
-                    <!-- 예문 및 품사 상세 정보 (접히는 부분) -->
-                    <div class="word-details mt-3 pt-3 border-t border-gray-100 hidden">
-                        <p class="text-xs font-semibold text-gray-700 mb-2">품사: <span class="text-toss-green">${word.part_of_speech}</span></p>
-                        <p class="text-sm text-gray-800 mb-1 font-semibold">예문 (日)</p>
-                        <p class="text-sm text-gray-600 mb-3 italic">${word.example_jp}</p>
-                        <p class="text-sm text-gray-800 mb-1 font-semibold">예문 (韓)</p>
-                        <p class="text-sm text-gray-600">${word.example_kr}</p>
-                        <!-- 단어장에 개별 저장 버튼 추가 -->
-                        <button data-action="save-single" data-word-index="${index}" class="mt-3 py-1 px-3 bg-toss-green text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition">
-                            <i class="fas fa-plus mr-1"></i> 단어장에 추가
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function attachGeneratorListeners() {
-            document.querySelectorAll('#level-selector button').forEach(button => {
-                button.onclick = (e) => {
-                    const newLevel = parseInt(e.currentTarget.dataset.level);
-                    if (newLevel !== selectedLevel) {
-                        selectedLevel = newLevel;
-                        generatedWords = []; 
-                        renderApp();
-                    }
-                };
-            });
-
-            document.getElementById('generate-button')?.addEventListener('click', generateWords);
-            
-            document.querySelectorAll('.word-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    const details = card.querySelector('.word-details');
-                    const icon = card.querySelector('i');
-                    if (details) {
-                        details.classList.toggle('hidden');
-                        icon.classList.toggle('rotate-180');
-                    }
-                });
-            });
-
-            document.getElementById('save-button')?.addEventListener('click', saveWordList);
-
-            document.getElementById('start-quiz-button')?.addEventListener('click', () => startQuiz(generatedWords));
-
-            // 개별 단어 저장 리스너 추가
-            document.querySelectorAll('[data-action="save-single"]').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation(); // 카드 토글 방지
-                    const index = parseInt(e.currentTarget.dataset.wordIndex);
-                    const word = generatedWords[index];
-                    saveSingleWord(word);
-                });
-            });
-        }
-
-        // --- Quiz View (생략) ---
-
-        function startQuiz(wordsToQuiz) {
-            if (wordsToQuiz.length === 0) {
-                showError("퀴즈를 시작할 단어 목록이 없습니다.");
-                return;
-            }
-            quizWords = wordsToQuiz.sort(() => 0.5 - Math.random()); 
-            currentQuestionIndex = 0;
-            quizScore = 0;
-            currentView = 'quiz';
-            renderApp();
-        }
-
-        function generateQuizOptions(correctWord) {
-            // 퀴즈 옵션 생성 시 개별 단어장 단어도 포함
-            const allWords = [
-                ...generatedWords, 
-                ...savedWordLists.flatMap(list => list.words || []), 
-                ...wrongWords,
-                ...manualSavedWords.map(item => item.word) 
-            ];
-            const uniqueWords = allWords.filter((word, index, self) => 
-                index === self.findIndex((t) => (t.kanji === word.kanji))
-            );
-            
-            const options = [correctWord.korean_meaning];
-            const incorrectWords = uniqueWords.filter(w => w.korean_meaning !== correctWord.korean_meaning);
-            
-            while (options.length < 4 && incorrectWords.length > 0) {
-                const randomIndex = Math.floor(Math.random() * incorrectWords.length);
-                const incorrectMeaning = incorrectWords.splice(randomIndex, 1)[0].korean_meaning;
-                if (!options.includes(incorrectMeaning)) {
-                    options.push(incorrectMeaning);
-                }
-            }
-
-            return options.sort(() => 0.5 - Math.random());
-        }
-
-        async function handleAnswer(selectedMeaning) {
-            const currentWord = quizWords[currentQuestionIndex];
-            const correctMeaning = currentWord.korean_meaning;
-            const isCorrect = selectedMeaning === correctMeaning;
-            
-            const selectedButton = document.querySelector(`[data-meaning="${selectedMeaning}"]`);
-            
-            if (isCorrect) {
-                quizScore++;
-                selectedButton.classList.add('bg-toss-green', 'text-white');
-            } else {
-                selectedButton.classList.add('bg-red-500', 'text-white');
-                document.querySelector(`[data-meaning="${correctMeaning}"]`).classList.add('bg-blue-500', 'text-white');
-                
-                addWrongWords([currentWord]);
-            }
-
-            document.querySelectorAll('.answer-button').forEach(btn => btn.disabled = true);
-
-            setTimeout(() => {
-                currentQuestionIndex++;
-                renderApp();
-            }, 1000); 
-        }
-
-        function renderQuizView() {
-            if (currentQuestionIndex >= quizWords.length) {
-                const totalQuizQuestions = quizWords.length;
-                const correctCount = quizScore;
-                updateStats(totalQuizQuestions, correctCount);
-
-                const message = quizScore === quizWords.length ? "만점! 대단합니다!" : "아쉽지만 다음엔 만점 도전!";
-                return `
-                    <div class="flex flex-col items-center justify-center py-10">
-                        <h2 class="text-3xl font-bold text-gray-900 mb-6">퀴즈 결과! 🎉</h2>
-                        <p class="text-xl text-gray-700 mb-2">${message}</p>
-                        <p class="text-6xl font-extrabold text-toss-blue">${quizScore} / ${quizWords.length}</p>
-                        <div class="mt-8 space-y-3 w-full max-w-xs">
-                            <button id="restart-quiz-button" class="w-full py-3 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-500 transition">다시 퀴즈 시작</button>
-                            <button id="exit-quiz-button" class="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition">목록으로 돌아가기</button>
-                        </div>
-                    </div>
-                `;
-            }
-
-            const currentWord = quizWords[currentQuestionIndex];
-            quizOptions = generateQuizOptions(currentWord);
-
-            return `
-                <div id="quiz-content" class="py-4">
-                    <p class="text-center text-sm font-semibold text-toss-blue mb-2">
-                        문제 ${currentQuestionIndex + 1} / ${quizWords.length} (현재 점수: ${quizScore}점)
-                    </p>
-                    
-                    <!-- Question Card -->
-                    <div class="bg-white border-2 border-toss-blue rounded-xl p-6 shadow-xl mb-8">
-                        <p class="text-center text-gray-500 mb-2">다음 단어의 정확한 뜻은?</p>
-                        <h3 class="text-4xl font-extrabold text-gray-900 text-center">
-                            ${currentWord.kanji} <span class="text-2xl text-blue-600">【${currentWord.kana}】</span>
-                        </h3>
-                    </div>
-
-                    <!-- Answer Options -->
-                    <div id="quiz-options" class="space-y-4">
-                        ${quizOptions.map(meaning => `
-                            <button data-meaning="${meaning}" class="answer-button w-full py-4 px-4 text-lg text-gray-800 bg-gray-100 rounded-xl font-semibold border border-gray-300 text-left transition duration-150">
-                                ${meaning}
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        function attachQuizListeners() {
-            document.getElementById('quiz-options')?.addEventListener('click', (e) => {
-                const button = e.target.closest('.answer-button');
-                if (button && !button.disabled) {
-                    handleAnswer(button.dataset.meaning);
-                }
-            });
-
-            document.getElementById('restart-quiz-button')?.addEventListener('click', () => startQuiz(generatedWords));
-            document.getElementById('exit-quiz-button')?.addEventListener('click', () => {
-                currentView = 'generator';
-                renderApp();
-            });
-        }
-        
-        // --- My Lists View (폴더 및 목록 렌더링) ---
-
-        function renderFolderManagement() {
-            return `
-                <div id="folder-management" class="flex flex-col space-y-2 mb-6">
-                    <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-2">폴더 관리</h3>
-                    <div class="flex space-x-2 overflow-x-auto pb-2">
-                        <button id="add-folder-button" class="flex-shrink-0 py-2 px-4 bg-toss-green text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150">
-                            <i class="fas fa-plus mr-1"></i> 새 폴더
-                        </button>
-                        ${wordFolders.map(folder => `
-                            <div data-folder-id="${folder.id}" class="folder-pill flex-shrink-0 flex items-center bg-gray-100 text-gray-700 py-2 px-3 rounded-full border ${selectedFolderId === folder.id ? 'border-toss-blue bg-blue-50 text-toss-blue font-bold shadow-sm' : 'border-gray-300 hover:bg-gray-200'} transition duration-150">
-                                <span class="folder-name-display cursor-pointer mr-2">${folder.name}</span>
-                                <div class="folder-actions text-gray-500 space-x-1">
-                                    <button data-action="rename" class="rename-button text-xs hover:text-toss-blue p-1 rounded-full"><i class="fas fa-pen"></i></button>
-                                    <button data-action="delete" class="delete-button text-xs hover:text-red-500 p-1 rounded-full ${wordFolders[0].id === folder.id ? 'opacity-0 cursor-default' : ''}"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        
-        /** 개별 저장된 단어 카드 렌더링 (삭제 버튼 포함) */
-        function renderIndividualWordCard(item) {
-            const word = item.word;
-            return `
-                <div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center transition duration-200 hover:bg-gray-50 mb-2" data-saved-id="${item.id}" data-type="manual">
-                    <div class="flex items-center min-w-0 flex-grow">
-                        <span class="flex-shrink-0 text-xs font-medium text-toss-blue bg-blue-50 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">단</span>
-                        <div class="flex flex-col min-w-0">
-                            <div class="flex items-baseline mb-0.5">
-                                <span class="word-cell-kanji text-lg font-bold text-gray-900 mr-2 break-words">${word.kanji}</span>
-                                <span class="text-xs text-blue-600 font-medium break-words">【${word.kana}】</span>
-                            </div>
-                            <div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div>
-                        </div>
-                    </div>
-                    <button data-action="delete-single" data-saved-id="${item.id}" class="flex-shrink-0 ml-2 p-1 text-red-500 hover:text-red-700 transition">
-                        <i class="fas fa-trash-alt"></i>
+                    <button onclick="window.fetchWords()" class="w-full py-4 mb-8 bg-toss-blue text-white rounded-3xl font-bold text-lg shadow-xl hover:bg-blue-600 active:scale-95 transition-all">
+                        단어 20개 생성하기
                     </button>
-                </div>
-            `;
-        }
 
-        /** 오답 노트 단어 카드 렌더링 (삭제 버튼 포함) */
-        function renderWrongWordCard(word, index) {
-            return `
-                <div class="word-card bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center transition duration-200 hover:bg-gray-50 mb-2" data-index="${index}" data-type="wrong">
-                    <div class="flex items-center min-w-0 flex-grow">
-                        <span class="flex-shrink-0 text-xs font-medium text-red-500 bg-red-100 p-1 rounded-full w-6 h-6 flex items-center justify-center mr-3">오답</span>
-                        <div class="flex flex-col min-w-0">
-                            <div class="flex items-baseline mb-0.5">
-                                <span class="word-cell-kanji text-lg font-bold text-gray-900 mr-2 break-words">${word.kanji}</span>
-                                <span class="text-xs text-blue-600 font-medium break-words">【${word.kana}】</span>
+                    ${generatedWords.length > 0 ? `
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">N${selectedLevel} 추천 단어</h2>
+                            <div class="flex space-x-2">
+                                <button onclick="window.startQuiz(0)" class="w-10 h-10 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center"><i class="fas fa-play"></i></button>
+                                <button onclick="window.saveCurrentList()" class="w-10 h-10 bg-blue-50 text-toss-blue rounded-full flex items-center justify-center"><i class="fas fa-save"></i></button>
                             </div>
-                            <div class="text-sm text-gray-500 font-normal truncate">${word.korean_meaning}</div>
                         </div>
-                    </div>
-                    <button data-action="delete-wrong" data-word-index="${index}" class="flex-shrink-0 ml-2 p-1 text-red-500 hover:text-red-700 transition">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                        <div class="space-y-3 pb-24">
+                            ${generatedWords.map((w, i) => renderWordItem(w, i)).join('')}
+                        </div>
+                    ` : `
+                        <div class="flex flex-col items-center justify-center py-20 text-toss-muted">
+                            <i class="fas fa-sparkles text-4xl mb-4 opacity-20"></i>
+                            <p>새로운 단어를 생성해보세요.</p>
+                        </div>
+                    `}
                 </div>
             `;
         }
 
-
-        function renderListsView() {
-            const folderName = wordFolders.find(f => f.id === selectedFolderId)?.name || '폴더 오류';
-            
-            let listTitleText = '';
-            let listItems = '';
-            let combinedItems = [];
-
-            if (isViewingWrongWords) {
-                listTitleText = `오답 노트 (${wrongWords.length}개)`;
-                listItems = wrongWords.length > 0 
-                    ? wrongWords.map((word, index) => renderWrongWordCard(word, index)).join('') 
-                    : `<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-lg">틀린 단어가 없습니다! 대단해요.</p>`;
-            } else {
-                // 20개 그룹 목록
-                const savedListsInFolder = savedWordLists.filter(list => list.folderId === selectedFolderId);
-                // 개별 저장 단어
-                const savedIndividualWords = manualSavedWords.filter(item => item.folderId === selectedFolderId);
-
-                listTitleText = `${folderName} (${savedListsInFolder.length}개 목록, ${savedIndividualWords.length}개 단어)`;
-                
-                // 1. 20개 그룹 목록 추가
-                if (savedListsInFolder.length > 0) {
-                    combinedItems.push(`<h3 class="text-md font-bold text-gray-700 mb-3">전체 목록 (20개씩)</h3>`);
-                    savedListsInFolder.forEach((list, index) => {
-                        combinedItems.push(renderSavedListCard(list, index));
-                    });
-                }
-
-                // 2. 개별 저장 단어 추가
-                if (savedIndividualWords.length > 0) {
-                    combinedItems.push(`<h3 class="text-md font-bold text-gray-700 mt-6 mb-3 border-t pt-3 border-gray-200">개별 저장 단어 (${savedIndividualWords.length}개)</h3>`);
-                    savedIndividualWords.forEach(item => {
-                        combinedItems.push(renderIndividualWordCard(item));
-                    });
-                }
-
-                listItems = combinedItems.length > 0
-                    ? combinedItems.join('')
-                    : `<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-lg">이 폴더에 저장된 단어 목록이나 개별 단어가 없습니다.</p>`;
-            }
-
-
+        function renderWordItem(w, i) {
             return `
-                <div id="lists-content">
-                    ${renderStatsCard()}
-                    
-                    <p class="text-sm text-gray-600 mb-4">현재 기기 ID: <code class="bg-gray-200 px-2 py-0.5 rounded text-xs text-red-600">${deviceId}</code></p>
-                    
-                    ${renderFolderManagement()} <!-- 폴더 관리 UI 추가 -->
-                    
-                    <!-- 오답 노트 토글 버튼 -->
-                    <div class="flex space-x-2 mb-4">
-                        <button id="toggle-saved-lists" class="w-1/2 py-3 text-lg font-bold rounded-xl transition ${!isViewingWrongWords ? 'bg-toss-blue text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                            <i class="fas fa-bookmark mr-1"></i> 저장된 목록/단어
-                        </button>
-                        <button id="toggle-wrong-words" class="w-1/2 py-3 text-lg font-bold rounded-xl transition ${isViewingWrongWords ? 'bg-toss-yellow text-gray-900' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                            <i class="fas fa-times-circle mr-1"></i> 오답 노트 (${wrongWords.length})
-                        </button>
+                <div class="app-card p-5 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xl font-bold">${w.kanji}</span>
+                            <span class="text-sm text-toss-blue font-medium">【${w.kana}】</span>
+                        </div>
+                        <p class="text-toss-muted text-sm mt-1">${w.korean_meaning}</p>
+                    </div>
+                    <button onclick="window.toggleDetail(${i})" class="text-toss-gray bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-chevron-down text-xs text-toss-muted"></i></button>
+                </div>
+            `;
+        }
+
+        function renderLists() {
+            const folder = wordFolders.find(f => f.id === selectedFolderId);
+            contentContainer.innerHTML = `
+                <div class="view-transition">
+                    <div class="app-card p-6 rounded-3xl bg-toss-dark text-white mb-6">
+                        <p class="text-toss-muted text-sm mb-1">나의 정답률</p>
+                        <h3 class="text-3xl font-bold">${stats.overallRate}%</h3>
+                        <div class="mt-4 flex space-x-4 text-sm opacity-80">
+                            <span>시도 ${stats.totalAttempts}회</span>
+                            <span>정답 ${stats.totalCorrect}개</span>
+                        </div>
                     </div>
 
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">${listTitleText}</h2>
-                    
-                    ${isViewingWrongWords && wrongWords.length > 0 ? `
-                        <div class="mb-4">
-                            <button id="start-wrong-quiz" class="w-full py-3 bg-red-500 text-white font-bold rounded-xl shadow-md hover:bg-red-600 transition">
-                                <i class="fas fa-redo mr-1"></i> 오답 재도전 퀴즈 시작 (${wrongWords.length}문제)
-                            </button>
-                        </div>
-                        <div class="space-y-4 mb-4">
-                            <button id="clear-all-wrong-words" class="w-full py-2 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition">
-                                <i class="fas fa-eraser mr-1"></i> 오답 노트 전체 비우기
-                            </button>
-                        </div>
-                    ` : ''}
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">${folder.name}</h2>
+                        <button onclick="window.addFolder()" class="text-toss-blue font-bold text-sm">+ 폴더 추가</button>
+                    </div>
 
-                    <div id="word-list-display" class="space-y-4 max-h-72 overflow-y-auto pr-2">
-                        ${listItems}
+                    <div class="space-y-3 pb-24">
+                        ${manualSavedWords.filter(m => m.folderId === selectedFolderId).length > 0 
+                            ? manualSavedWords.filter(m => m.folderId === selectedFolderId).map(m => renderSavedItem(m)).join('')
+                            : `<p class="text-center py-10 text-toss-muted">저장된 단어가 없습니다.</p>`}
                     </div>
                 </div>
             `;
         }
 
-        function renderStatsCard() {
+        function renderSavedItem(m) {
             return `
-                <div class="bg-white p-5 rounded-xl shadow-lg mb-6 border border-gray-200">
-                    <h2 class="text-xl font-bold text-gray-800 mb-3"><i class="fas fa-chart-bar text-toss-blue mr-2"></i> 나의 학습 현황</h2>
-                    <div class="flex justify-between items-center text-center">
-                        <div>
-                            <p class="text-sm text-gray-500">총 퀴즈 시도</p>
-                            <p class="text-2xl font-bold text-gray-900 mt-1">${stats.totalAttempts.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">맞힌 단어</p>
-                            <p class="text-2xl font-bold text-toss-green mt-1">${stats.totalCorrect.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">전체 정답률</p>
-                            <p class="text-2xl font-bold text-toss-blue mt-1">${stats.overallRate}%</p>
-                        </div>
+                <div class="app-card p-5 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center">
+                    <div>
+                        <span class="text-lg font-bold">${m.word.kanji}</span>
+                        <p class="text-toss-muted text-sm">${m.word.korean_meaning}</p>
                     </div>
+                    <button onclick="window.removeSaved('${m.id}')" class="text-red-400"><i class="fas fa-trash-alt"></i></button>
                 </div>
             `;
         }
 
-        function renderSavedListCard(list, index) {
-            return `
-                <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-md flex justify-between items-center transition duration-200 hover:bg-gray-50">
-                    <div class="flex flex-col">
-                        <h3 class="text-lg font-bold text-gray-800">
-                            N${list.level} 단어 목록 (${list.wordCount}개)
-                        </h3>
-                        <p class="text-sm text-gray-500">저장일: ${list.createdAt}</p>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button data-list-id="${list.id}" data-action="load" class="py-2 px-3 bg-toss-blue text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition">
-                            <i class="fas fa-eye mr-1"></i> 보기
-                        </button>
-                        <button data-list-id="${list.id}" data-action="delete-list" class="py-2 px-3 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function attachListsListeners() {
-            // --- 폴더 관리 리스너 ---
-            document.getElementById('add-folder-button')?.addEventListener('click', () => {
-                // Custom Input Modal 사용
-                renderInputModal("새 폴더 이름 입력", "새 폴더", (folderName) => {
-                    if (folderName) {
-                        addFolder(folderName);
-                    }
-                });
-            });
-
-            document.querySelectorAll('.folder-pill').forEach(pill => {
-                const folderId = pill.dataset.folderId;
-                
-                // 1-1. 폴더 선택 (필터링)
-                pill.querySelector('.folder-name-display')?.addEventListener('click', () => {
-                    isViewingWrongWords = false; // 저장된 목록 보기로 전환
-                    selectedFolderId = folderId;
-                    renderApp();
-                });
-
-                // 1-2. 폴더 이름 변경
-                pill.querySelector('[data-action="rename"]')?.addEventListener('click', (e) => {
-                    e.stopPropagation(); // 폴더 선택 이벤트 방지
-                    const currentFolder = wordFolders.find(f => f.id === folderId);
-                    
-                    if (currentFolder) {
-                        renderInputModal(`'${currentFolder.name}' 이름 변경`, currentFolder.name, (newName) => {
-                            if (newName) {
-                                renameFolder(folderId, newName);
-                            }
-                        });
-                    }
-                });
-
-                // 1-3. 폴더 삭제
-                pill.querySelector('[data-action="delete"]')?.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteFolder(folderId);
-                });
-            });
-
-            // --- 오답 노트 / 저장 목록 토글 ---
-            document.getElementById('toggle-saved-lists')?.addEventListener('click', () => {
-                isViewingWrongWords = false;
-                renderApp();
-            });
-            document.getElementById('toggle-wrong-words')?.addEventListener('click', () => {
-                isViewingWrongWords = true;
-                renderApp();
-            });
-
-            // --- 오답 노트/단어장 액션 ---
-            document.getElementById('start-wrong-quiz')?.addEventListener('click', () => {
-                if(wrongWords.length > 0) {
-                    startQuiz(wrongWords);
-                }
-            });
-
-            document.getElementById('clear-all-wrong-words')?.addEventListener('click', () => {
-                renderModal("오답 노트 초기화", "오답 노트에 있는 모든 단어를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
-                    wrongWords = [];
-                    saveWrongWordsToLocal();
-                    renderApp();
-                });
-            });
-
-            // 오답 노트 개별 관리 및 저장 목록 삭제
-            document.getElementById('word-list-display')?.addEventListener('click', (e) => {
-                const target = e.target.closest('button');
-                
-                if (!target) return;
-                
-                // 1. 개별 저장 단어 삭제 (delete-single)
-                if (target.dataset.action === 'delete-single') {
-                    const savedId = target.dataset.savedId;
-                    const wordToDelete = manualSavedWords.find(item => item.id === savedId)?.word;
-                    
-                    if (wordToDelete) {
-                        renderModal("단어 삭제 확인", `'${wordToDelete.kanji}' 단어를 폴더에서 삭제하시겠습니까?`, () => {
-                            manualSavedWords = manualSavedWords.filter(item => item.id !== savedId);
-                            saveManualWordsToLocal();
-                            renderApp();
-                        });
-                    }
-                    return;
-                }
-                
-                // 2. 오답 노트 개별 삭제 (delete-wrong)
-                if (target.dataset.action === 'delete-wrong') {
-                    const index = parseInt(target.dataset.wordIndex);
-                    const wordToDelete = wrongWords[index];
-                    
-                    renderModal("오답 삭제 확인", `'${wordToDelete.kanji}' 단어를 오답 노트에서 삭제하시겠습니까? (외웠다면)`, () => {
-                        wrongWords.splice(index, 1);
-                        saveWrongWordsToLocal();
-                        renderApp();
-                    });
-                    return;
-                }
-                
-                // 3. 저장된 목록 개별 삭제 (delete-list)
-                if (target.dataset.action === 'delete-list') {
-                    const listId = target.dataset.listId;
-                    const listToDelete = savedWordLists.find(l => l.id === listId);
-
-                    renderModal("단어 목록 삭제", `'${listToDelete.level} 단어 목록'을 삭제하시겠습니까?`, () => {
-                        savedWordLists = savedWordLists.filter(l => l.id !== listId);
-                        saveWordListsToLocal();
-                        renderApp();
-                    });
-                    return;
-                }
-                
-                // 4. 저장된 목록 보기/퀴즈 (load)
-                const listId = target.dataset.listId;
-                const action = target.dataset.action;
-                const list = savedWordLists.find(l => l.id === listId);
-
-                if (!list || action !== 'load' && action !== 'quiz') return;
-
-                if (action === 'load') {
-                    selectedLevel = list.level;
-                    generatedWords = list.words;
-                    currentView = 'generator';
-                    renderApp();
-                    renderModal("단어장 불러오기 완료", `N${list.level} 단어 ${list.wordCount}개가 생성기 목록에 로드되었습니다.`);
-                } else if (action === 'quiz') {
-                    startQuiz(list.words);
-                }
-            });
-            
-            // NOTE: 개별 저장 단어와 오답 노트 카드는 별도의 삭제 버튼을 가지므로,
-            // 단어 카드 클릭 시 상세 정보 토글 로직을 위해 별도의 리스너 추가 필요
-            document.querySelectorAll('#word-list-display .word-card').forEach(card => {
-                // 단어 카드 자체를 클릭하고, 삭제 버튼을 누른 경우가 아니라면 상세 정보 토글
-                card.addEventListener('click', (e) => {
-                    const actionButton = e.target.closest('button[data-action]');
-                    if (actionButton) return; // 액션 버튼 클릭 무시
-
-                    const details = card.querySelector('.word-details');
-                    const icon = card.querySelector('i.fa-chevron-down');
-                    if (details && icon) {
-                        details.classList.toggle('hidden');
-                        icon.classList.toggle('rotate-180');
-                    }
-                });
-            });
-        }
-        
-        // --- Initialization ---
-
-        window.onload = () => {
-            tabGenerator.addEventListener('click', () => {
-                currentView = 'generator';
-                renderApp();
-            });
-            tabLists.addEventListener('click', () => {
-                currentView = 'lists';
-                isViewingWrongWords = false; // 기본은 저장된 목록 보기
-                renderApp();
-            });
-
-            setupApp();
+        // Global functions for HTML
+        window.fetchWords = generateWords;
+        window.setLevel = (l) => { selectedLevel = l; renderApp(); };
+        window.switchView = (v) => { currentView = v; renderApp(); };
+        window.saveCurrentList = () => {
+            if (generatedWords.length === 0) return;
+            const newItems = generatedWords.map(w => ({ id: generateUniqueId(), folderId: selectedFolderId, word: w, createdAt: new Date().toISOString() }));
+            manualSavedWords = [...manualSavedWords, ...newItems];
+            saveToLocal(MANUAL_WORDS_KEY, manualSavedWords);
+            alert("저장되었습니다.");
         };
 
+        window.onload = setupApp;
     </script>
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 sm:p-6">
+<body class="min-h-screen flex flex-col max-w-lg mx-auto bg-toss-gray">
 
-    <div id="app" class="w-full max-w-lg bg-white rounded-xl shadow-2xl p-6 sm:p-8">
+    <!-- Header -->
+    <header class="p-6 pt-10 bg-transparent flex justify-between items-center">
+        <h1 class="text-2xl font-extrabold tracking-tight">JLPT Master</h1>
+        <div id="error-message" class="hidden fixed top-10 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-2xl z-50 text-sm font-bold"></div>
+    </header>
 
-        <!-- Header -->
-        <h1 class="text-3xl font-bold text-gray-900 text-center mb-2">
-            JLPT 단어 학습 앱
-        </h1>
-        <p class="text-center text-gray-500 mb-6 sm:mb-8">
-            N1부터 N4까지, 단어 생성부터 퀴즈, 오답 관리까지!
-        </p>
+    <!-- Main Content -->
+    <main id="content-container" class="flex-1 px-6">
+        <!-- Renders dynamically -->
+    </main>
 
-        <!-- Navigation Tabs -->
-        <div class="flex border-b border-gray-200 mb-6">
-            <button id="tab-generator" class="tab-button w-1/2 py-3 text-lg text-gray-700 bg-gray-100 rounded-t-lg transition duration-200">
-                <i class="fas fa-bolt mr-2"></i> 단어 생성기
-            </button>
-            <button id="tab-lists" class="tab-button w-1/2 py-3 text-lg text-gray-700 bg-gray-100 rounded-t-lg transition duration-200">
-                <i class="fas fa-list-ul mr-2"></i> 나의 단어장
-            </button>
-        </div>
-
-        <!-- Content Area (Dynamically Rendered) -->
-        <div id="content-container">
-            <!-- Content will be rendered here based on currentView state -->
-            <div class="flex flex-col items-center justify-center h-64">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-toss-blue"></div>
-                <p class="mt-4 text-lg text-gray-600">앱 데이터 준비 중...</p>
-            </div>
-        </div>
-
-        <!-- Error Message -->
-        <div id="error-message" class="hidden mt-4 p-3 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-md">
-            <!-- Error messages will be displayed here -->
-        </div>
-
-    </div>
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 max-w-lg w-full bg-white/80 backdrop-blur-xl border-t border-gray-100 rounded-t-[40px] px-10 py-6 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+        <button onclick="window.switchView('generator')" class="tab-btn flex flex-col items-center space-y-1 tab-active" data-view="generator">
+            <i class="fas fa-sparkles text-xl"></i>
+            <span class="text-[10px] font-bold">생성</span>
+        </button>
+        <button onclick="window.switchView('lists')" class="tab-btn flex flex-col items-center space-y-1" data-view="lists">
+            <i class="fas fa-folder text-xl"></i>
+            <span class="text-[10px] font-bold">단어장</span>
+        </button>
+        <button onclick="window.switchView('quiz')" class="tab-btn flex flex-col items-center space-y-1" data-view="quiz">
+            <i class="fas fa-graduation-cap text-xl"></i>
+            <span class="text-[10px] font-bold">퀴즈</span>
+        </button>
+    </nav>
 
 </body>
 </html>
+
