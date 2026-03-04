@@ -18,7 +18,6 @@ export default async function handler(req, res) {
   const userQuery = `Generate 20 random high-frequency words for JLPT N${level || 2}. Include 'kanji', 'kana', 'korean_meaning', 'part_of_speech', 'example_jp', and 'example_kr'. Return as a clean JSON array.`;
 
   try {
-    // 안정적인 gemini-2.0-flash 모델 사용
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
@@ -37,18 +36,21 @@ export default async function handler(req, res) {
     const result = await response.json();
 
     if (!response.ok) {
+      // 403 에러의 경우 구체적인 이유(제한 설정, 지역 제한 등)를 로그와 클라이언트에 상세히 전달합니다.
+      console.error("Google API Error Details:", JSON.stringify(result));
       return res.status(response.status).json({ 
         error: "Gemini API failure", 
-        detail: result.error?.message || "구글 서버 응답 오류"
+        detail: result.error?.message || "구글 서버 응답 오류가 발생했습니다.",
+        code: result.error?.status || "UNKNOWN_ERROR"
       });
     }
 
     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new Error("AI 응답 데이터가 없습니다.");
 
-    // JSON 문자열을 파싱하여 클라이언트에 전달
     res.status(200).json(JSON.parse(text));
   } catch (e) {
+    console.error("Server Runtime Error:", e.message);
     res.status(500).json({ error: "Server Error", message: e.message });
   }
 }
