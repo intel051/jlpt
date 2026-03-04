@@ -16,51 +16,57 @@ export default async function handler(req, res) {
   const systemInstruction = "Professional Japanese tutor. Generate exactly 20 high-frequency JLPT vocabulary words. Output strictly in JSON format.";
   const userQuery = `Generate 20 random high-frequency words for JLPT N${level || 2}. Include 'kanji', 'kana', 'korean_meaning', 'part_of_speech', 'example_jp', and 'example_kr'. Return as a clean JSON array.`;
 
-  // 지수 백오프(Exponential Backoff)를 이용한 재시도 함수
-  const fetchWithRetry = async (url, options, retries = 3, backoff = 1000) => {
-    try {
-      const response = await fetch(url, options);
-      
-      if (response.status === 429 && retries > 0) {
-        // 429 에러 발생 시 대기 후 재시도
-        await new Promise(resolve => setTimeout(resolve, backoff));
-        return fetchWithRetry(url, options, retries - 1, backoff * 2);
+  // 지수 백오프를 적용한 재시도 로직
+  const fetchWithRetry = async (model, retries = 5, backoff = 2000) => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const options = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: userQuery }] }],
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        generationConfig: { responseMimeType: "application/json" }
+      })
+    };
+
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        
+        if (response.status === 429) {
+          // 할당량 초과 시 대기 후 재시도
+          const waitTime = backoff * Math.pow(2, i);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        return response;
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        await new Promise(resolve => setTimeout(resolve, backoff * Math.pow(2, i)));
       }
-      
-      return response;
-    } catch (error) {
-      if (retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, backoff));
-        return fetchWithRetry(url, options, retries - 1, backoff * 2);
-      }
-      throw error;
     }
+    return { status: 429 }; // 모든 재시도 실패 시
   };
 
   try {
-    const response = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: userQuery }] }],
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          generationConfig: { 
-            responseMimeType: "application/json"
-          }
-        })
-      }
-    );
+    // 1단계: 최신 모델인 2.0-flash로 시도
+    let response = await fetchWithRetry("gemini-2.0-flash");
+
+    // 2단계: 2.0 모델이 여전히 429를 반환하면 1.5-flash로 폴백
+    if (response.status === 429) {
+      console.log("Switching to fallback model: gemini-1.5-flash");
+      response = await fetchWithRetry("gemini-1.5-flash");
+    }
 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("Google API Error Details:", JSON.stringify(result));
+      console.error("Google API Error:", JSON.stringify(result));
       return res.status(response.status).json({ 
         error: "Gemini API failure", 
-        detail: result.error?.message || "구글 서버 응답 오류가 발생했습니다.",
-        code: result.error?.status || "UNKNOWN_ERROR"
+        detail: result.error?.message || "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+        code: result.error?.status || "TOO_MANY_REQUESTS"
       });
     }
 
