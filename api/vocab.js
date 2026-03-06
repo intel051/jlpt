@@ -51,12 +51,12 @@ export default async function handler(req, res) {
 
   try {
     // 1단계: 최신 모델인 2.0-flash로 시도
-    let response = await fetchWithRetry("gemini-2.0-flash");
+    let response = await fetchWithRetry("gemini-3.1-flash-lite-preview");
 
     // 2단계: 2.0 모델이 여전히 429를 반환하면 1.5-flash로 폴백
     if (response.status === 429) {
-      console.log("Switching to fallback model: gemini-1.5-flash");
-      response = await fetchWithRetry("gemini-1.5-flash");
+      console.log("Switching to fallback model: gemini-2.5-flash");
+      response = await fetchWithRetry("gemini-2.5-flash");
     }
 
     const result = await response.json();
