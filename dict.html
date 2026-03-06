@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi Jisho</title>
+    <!-- Pretendard JP & Tailwind CSS -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-jp.min.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Pretendard JP", sans-serif; background-color: #F2F4F6; color: #333D4B; -webkit-font-smoothing: antialiased; }
+        .toss-card { background: #ffffff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); }
+        .loading-spinner { width: 52px; height: 52px; border: 6px solid rgba(109, 146, 240, 0.1); border-top: 6px solid #6D92F0; border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-x-hidden">
+
+    <!-- Navbar (Visible only on result) -->
+    <nav id="navbar" class="sticky top-0 bg-white/75 backdrop-blur-xl z-30 border-b border-gray-100 hidden">
+        <div class="max-w-2xl mx-auto px-5 h-16 flex items-center gap-4">
+            <div onclick="showHome()" class="flex items-center gap-2 cursor-pointer group">
+                <div class="w-8 h-8 bg-[#6D92F0] rounded-lg flex items-center justify-center text-white font-bold text-sm transition-transform group-hover:scale-105">M</div>
+                <span class="font-bold text-[#6D92F0] hidden sm:block">Mochi</span>
+            </div>
+            <div class="relative flex-1">
+                <input type="text" id="navSearchInput" placeholder="단어를 입력하세요" class="w-full bg-[#F9FAFB] border-none rounded-2xl py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-[#6D92F0]/20 outline-none text-sm transition-all">
+                <svg class="absolute left-3.5 top-3 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+        </div>
+    </nav>
+
+    <div id="app" class="max-w-2xl mx-auto px-5 flex-1 flex flex-col w-full relative">
+        
+        <!-- Home View -->
+        <div id="homeView" class="flex-1 flex flex-col items-center justify-center text-center space-y-10 fade-in py-20">
+            <div class="space-y-4">
+                <div class="w-24 h-24 bg-white toss-card flex items-center justify-center mx-auto shadow-sm"><span class="text-5xl">🍡</span></div>
+                <h1 class="text-4xl font-extrabold tracking-tight text-[#191F28]">모찌 일본어 사전</h1>
+                <p class="text-[#8B95A1] font-medium leading-relaxed text-lg">궁금한 단어를 검색하면<br>AI가 "뜻과 예문"을 정리해드려요.</p>
+            </div>
+            <div class="w-full max-w-md relative group">
+                <input type="text" id="homeSearchInput" placeholder="단어를 검색해 보세요" class="w-full bg-white toss-card py-5 px-14 text-lg focus:ring-4 focus:ring-[#6D92F0]/10 outline-none border-none transition-all shadow-xl shadow-black/[0.03]">
+                <svg class="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-[#6D92F0]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div class="flex flex-wrap justify-center gap-2">
+                <button onclick="handleSearch('食べる')" class="px-5 py-2.5 bg-white rounded-full text-sm font-bold text-[#6D92F0] shadow-sm hover:bg-[#6D92F0] hover:text-white transition-all active:scale-95">食べる</button>
+                <button onclick="handleSearch('行く')" class="px-5 py-2.5 bg-white rounded-full text-sm font-bold text-[#6D92F0] shadow-sm hover:bg-[#6D92F0] hover:text-white transition-all active:scale-95">行く</button>
+                <button onclick="handleSearch('勉強')" class="px-5 py-2.5 bg-white rounded-full text-sm font-bold text-[#6D92F0] shadow-sm hover:bg-[#6D92F0] hover:text-white transition-all active:scale-95">勉強</button>
+            </div>
+        </div>
+
+        <!-- Loading View (Fixed Overlay) -->
+        <div id="loadingView" class="hidden fixed inset-0 flex-col items-center justify-center bg-[#F2F4F6]/80 backdrop-blur-md z-50 space-y-8">
+            <div class="loading-spinner"></div>
+            <p class="text-xl font-bold text-[#191F28]">단어를 정성껏 분석하고 있어요</p>
+        </div>
+
+        <!-- Result View -->
+        <div id="resultView" class="hidden pt-8 pb-20 space-y-6 fade-in">
+            <header class="toss-card p-12 text-center flex flex-col items-center">
+                <span id="resReading" class="px-4 py-1.5 bg-[#F2F4F6] text-[#6D92F0] rounded-full text-[13px] font-bold mb-5 tracking-widest"></span>
+                <h2 id="resWord" class="text-6xl font-extrabold mb-6 tracking-tight text-[#191F28]"></h2>
+                <p id="resMeaning" class="text-2xl text-[#4E5968] font-bold"></p>
+            </header>
+            
+            <section class="toss-card p-8">
+                <h3 class="text-xl font-bold text-[#191F28] mb-8 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-[#E8F3FF] rounded-xl flex items-center justify-center text-[#6D92F0]">📖</span> 문장 예시
+                </h3>
+                <div id="resExamples" class="space-y-4"></div>
+
+                <div id="humbleSection" class="hidden mt-12 pt-10 border-t border-gray-100">
+                    <h3 class="text-xl font-bold text-[#191F28] mb-8 flex items-center gap-3">
+                        <span class="w-10 h-10 bg-[#FFF0F1] rounded-xl flex items-center justify-center text-[#FF7E8D]">✨</span> 정중한 표현
+                    </h3>
+                    <div class="bg-gradient-to-br from-[#FFF0F1] to-[#FFF8F8] p-8 rounded-[32px] border border-[#FF7E8D]/5">
+                        <p id="humbleJp" class="text-2xl font-extrabold text-[#D33341] mb-2"></p>
+                        <p id="humbleKr" class="text-[#4E5968] font-bold text-lg mb-5"></p>
+                        <div id="humbleNote" class="bg-white/60 p-5 rounded-2xl text-[14px] text-[#8B95A1] leading-relaxed"></div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="toss-card p-8"><h4 class="text-[11px] font-extrabold text-[#ADB5BD] uppercase tracking-[0.2em] mb-6">유의어</h4><div id="resSynonyms" class="flex flex-wrap gap-2"></div></div>
+                <div class="toss-card p-8"><h4 class="text-[11px] font-extrabold text-[#ADB5BD] uppercase tracking-[0.2em] mb-6">반의어</h4><div id="resAntonyms" class="flex flex-wrap gap-2"></div></div>
+            </div>
+        </div>
+
+        <!-- Error View -->
+        <div id="errorView" class="hidden flex-1 flex flex-col items-center justify-center py-20 text-center space-y-8 min-h-[60vh]">
+            <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto text-3xl">⚠️</div>
+            <p id="errorMessage" class="text-xl font-bold text-[#191F28]"></p>
+            <button onclick="showHome()" class="px-10 py-4 bg-[#6D92F0] text-white rounded-2xl font-bold shadow-lg shadow-[#6D92F0]/20 active:scale-95">다시 검색하기</button>
+        </div>
+    </div>
+
+    <script>
+        const ui = { home: document.getElementById('homeView'), loading: document.getElementById('loadingView'), result: document.getElementById('resultView'), error: document.getElementById('errorView'), nav: document.getElementById('navbar') };
+
+        function updateView(active) {
+            Object.keys(ui).forEach(key => {
+                if (key === 'nav') return;
+                ui[key].classList.toggle('hidden', key !== active);
+                ui[key].style.display = (key === active) ? (key === 'loading' ? 'flex' : (key === 'result' ? 'block' : 'flex')) : 'none';
+            });
+            ui.nav.classList.toggle('hidden', active === 'home');
+        }
+
+        function showHome() { updateView('home'); }
+
+        async function handleSearch(query) {
+            const word = query || document.getElementById('homeSearchInput').value || document.getElementById('navSearchInput').value;
+            if (!word?.trim()) return;
+            updateView('loading');
+            try {
+                const response = await fetch('/api/dictionary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: word.trim() })
+                });
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                
+                document.getElementById('resWord').innerText = data.word;
+                document.getElementById('resReading').innerText = data.reading;
+                document.getElementById('resMeaning').innerText = data.meaning;
+                document.getElementById('resExamples').innerHTML = data.examples.map(ex => `<div class="p-7 rounded-2xl bg-[#F9FAFB] hover:border-[#6D92F0]/15 transition-all"><p class="text-[20px] font-medium mb-2 text-[#191F28]">${ex.jp}</p><p class="text-[#6B7684] text-[15px] font-medium">${ex.kr}</p></div>`).join('');
+                
+                if (data.humble) {
+                    document.getElementById('humbleSection').classList.remove('hidden');
+                    document.getElementById('humbleJp').innerText = data.humble.jp;
+                    document.getElementById('humbleKr').innerText = data.humble.kr;
+                    document.getElementById('humbleNote').innerText = data.humble.note;
+                } else {
+                    document.getElementById('humbleSection').classList.add('hidden');
+                }
+
+                const tagHtml = (tags, color) => tags?.length ? tags.map(t => `<button onclick="handleSearch('${t}')" class="px-5 py-2.5 bg-[#F2F4F6] text-[#4E5968] rounded-2xl text-[14px] font-bold hover:bg-${color} hover:text-white transition-all active:scale-95 shadow-sm shadow-black/5">${t}</button>`).join('') : '<span class="text-gray-300 italic font-medium">정보 없음</span>';
+                document.getElementById('resSynonyms').innerHTML = tagHtml(data.synonyms, '[#6D92F0]');
+                document.getElementById('resAntonyms').innerHTML = tagHtml(data.antonyms, '[#FF7E8D]');
+                
+                updateView('result');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch {
+                document.getElementById('errorMessage').innerText = "단어를 불러오는 중에 오류가 발생했습니다.";
+                updateView('error');
+            }
+        }
+
+        document.getElementById('homeSearchInput').onkeypress = e => e.key === 'Enter' && handleSearch();
+        document.getElementById('navSearchInput').onkeypress = e => e.key === 'Enter' && handleSearch();
+        showHome();
+    </script>
+</body>
+</html>
+
