@@ -1,0 +1,10 @@
+{
+  "name": "mochi-jisho",
+  "version": "1.0.0",
+  "description": "AI 기반 일본어 사전",
+  "main": "api/dictionary.js",
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}
+
