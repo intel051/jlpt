@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "cleanUrls": true,
   "rewrites": [
     {
@@ -14,8 +15,9 @@
       "destination": "/Dict.html"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|test|Dict).*)",
       "destination": "/index.html"
     }
   ]
 }
+
