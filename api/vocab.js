@@ -1,63 +1,116 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: "Method Not Allowed" });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { level } = req.body;
+  const { level, query } = req.body;
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: "API Key Error", detail: "환경 변수 설정이 필요합니다." });
+    return res.status(500).json({ error: 'API key is not configured' });
   }
 
-  // 무작위성을 높이기 위한 타임스탬프 기반 시드 텍스트 생성
-  const randomSeed = Date.now().toString().slice(-4);
-  
-  const systemInstruction = `Professional Japanese tutor. Generate exactly 20 diverse and random JLPT vocabulary words. Avoid repeating only the most common ones; ensure a wide variety. Output strictly in JSON format.`;
-  
-  const userQuery = `Generate 20 random JLPT N${level || 2} words. 
-  Each object must include:
-  - 'kanji', 'kana', 'korean_meaning', 'part_of_speech'
-  - 'examples': array of 2 {jp, kr}
-  - 'synonyms': array of {word, meaning} (up to 3)
-  - 'antonyms': array of {word, meaning} (up to 3)
-  Use random seed hint: ${randomSeed}. Return as a clean JSON array.`;
+  const isDictMode = !!query;
 
-  const fetchWithRetry = async (model, retries = 3, backoff = 2000) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: userQuery }] }],
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          generationConfig: { responseMimeType: "application/json" }
-        })
-      });
-      if (response.status === 429 && retries > 0) {
-        await new Promise(r => setTimeout(r, backoff));
-        return fetchWithRetry(model, retries - 1, backoff * 2);
-      }
-      return response;
-    } catch (e) {
-      if (retries > 0) return fetchWithRetry(model, retries - 1, backoff * 2);
-      throw e;
-    }
+  // 1. 시스템 프롬프트 설정 (사용자 규칙 반영)
+  const systemPrompt = isDictMode 
+    ? `You are a professional Japanese-Korean dictionary based on Gemini. 
+       Rules:
+       1. Response must be ONLY valid JSON object.
+       2. Format Japanese text in 'word' field as "Kanji(Hiragana)".
+       3. Accuracy is paramount. Verify all readings and meanings twice to prevent hallucinations.
+       4. Provide max 2 high-quality examples.
+       5. Keep meaning and notes in Korean.`
+    : `You are a professional Japanese tutor. 
+       Generate exactly 20 diverse and random high-frequency JLPT N${level || 2} vocabulary words. 
+       Rules:
+       1. Response must be ONLY valid JSON array of objects.
+       2. Format Japanese text in 'word' field as "Kanji(Hiragana)".
+       3. Accuracy is paramount. Verify all readings and meanings to prevent hallucinations.
+       4. Provide 2 high-quality examples per word.
+       5. Keep meaning and notes in Korean.
+       6. Ensure high randomness to avoid repetition of common words.`;
+
+  // 2. 구조화된 데이터 스키마 정의
+  const itemSchema = {
+    type: "OBJECT",
+    properties: {
+      word: { type: "STRING", description: "The word in Kanji(Hiragana) format" },
+      reading: { type: "STRING", description: "Reading in Hiragana" },
+      meaning: { type: "STRING", description: "Meaning in Korean" },
+      examples: { 
+        type: "ARRAY", 
+        items: { 
+          type: "OBJECT", 
+          properties: { jp: { type: "STRING" }, kr: { type: "STRING" } },
+          required: ["jp", "kr"]
+        } 
+      },
+      humble: { 
+        type: "OBJECT", 
+        nullable: true,
+        properties: { jp: { type: "STRING" }, kr: { type: "STRING" }, note: { type: "STRING" } } 
+      },
+      synonyms: { type: "ARRAY", items: { type: "STRING" } },
+      antonyms: { type: "ARRAY", items: { type: "STRING" } }
+    },
+    required: ["word", "reading", "meaning", "examples", "synonyms", "antonyms"]
   };
 
-  try {
-    let response = await fetchWithRetry("gemini-3.1-flash-lite-preview");
-    if (response.status === 404 || response.status === 429) {
-      response = await fetchWithRetry("gemini-2.5-flash");
+  // 3. 실행 환경 설정
+  const finalSchema = isDictMode ? itemSchema : { type: "ARRAY", items: itemSchema };
+  const userPrompt = isDictMode ? `Search dictionary for: ${query}` : `Generate 20 random words for JLPT N${level || 2}`;
+  
+  // 가장 안정적인 gemini-3.1-flash-lite 모델 사용
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
+
+  let retryCount = 0;
+  const maxRetries = 5;
+
+  async function callGemini() {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: userPrompt }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { 
+            responseMimeType: "application/json", 
+            responseSchema: finalSchema
+          }
+        })
+      });
+
+      if (!response.ok) {
+        if (response.status === 429 && retryCount < maxRetries) {
+          throw new Error('RATE_LIMIT');
+        }
+        throw new Error(`Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error("Empty AI response");
+      
+      return JSON.parse(text);
+
+    } catch (err) {
+      if (retryCount < maxRetries) {
+        retryCount++;
+        const delay = Math.pow(2, retryCount) * 1000;
+        await new Promise(r => setTimeout(r, delay));
+        return callGemini();
+      }
+      throw err;
     }
+  }
 
-    const result = await response.json();
-    if (!response.ok) return res.status(response.status).json(result);
-
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    res.status(200).json(JSON.parse(text));
-  } catch (e) {
-    res.status(500).json({ error: "Server Error", message: e.message });
+  try {
+    const data = await callGemini();
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("API Error:", error.message);
+    res.status(500).json({ error: 'Failed to fetch dictionary or vocab data' });
   }
 }
