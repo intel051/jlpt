@@ -15,6 +15,8 @@
                         'toss-blue': '#3182F6',
                         'toss-text': '#191F28',
                         'toss-muted': '#8B95A1',
+                        'pastel-blue-bg': '#EBF3FF',
+                        'pastel-rose-bg': '#FFF0F3',
                     }
                 },
             },
@@ -29,27 +31,39 @@
         .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.5); }
         .toss-card { background: #ffffff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); border: 1px solid rgba(0,0,0,0.04); }
         
-        /* Premium Button-style Chip */
+        /* Modern Button-style Chip */
         .premium-chip {
-            @apply flex items-center gap-1.5 px-4 py-2.5 rounded-[20px] border transition-all duration-300 active:scale-95 text-left;
+            @apply flex flex-col items-start px-5 py-3 rounded-[22px] transition-all duration-300 active:scale-95 text-left border;
             background: #ffffff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
         }
 
-        .synonym-btn { @apply border-blue-100 text-blue-600; }
+        /* Synonym Style: Ocean Pastel */
+        .synonym-btn { 
+            @apply border-blue-50 bg-gradient-to-br from-white to-blue-50/30; 
+        }
+        .synonym-btn .kanji { @apply text-blue-600; }
+        .synonym-btn .reading { @apply text-blue-400; }
         .synonym-btn:hover { 
-            @apply border-toss-blue bg-blue-50 -translate-y-0.5 shadow-lg shadow-blue-100;
+            @apply border-toss-blue -translate-y-1 bg-white;
+            box-shadow: 0 10px 20px rgba(49, 130, 246, 0.1);
         }
 
-        .antonym-btn { @apply border-rose-100 text-rose-500; }
+        /* Antonym Style: Rose Pastel */
+        .antonym-btn { 
+            @apply border-rose-50 bg-gradient-to-br from-white to-rose-50/30; 
+        }
+        .antonym-btn .kanji { @apply text-rose-500; }
+        .antonym-btn .reading { @apply text-rose-300; }
         .antonym-btn:hover { 
-            @apply border-rose-400 bg-rose-50 -translate-y-0.5 shadow-lg shadow-rose-100;
+            @apply border-rose-400 -translate-y-1 bg-white;
+            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.1);
         }
 
-        .premium-chip .reading { @apply text-[11px] font-medium opacity-50; }
-        .premium-chip .kanji { @apply text-[14px] font-bold; }
+        .premium-chip .reading { @apply text-[10px] font-bold tracking-tight mb-0.5; }
+        .premium-chip .kanji { @apply text-[15px] font-extrabold tracking-tight; }
 
-        .modal-overlay { background: rgba(0, 0, 0, 0.12); backdrop-filter: blur(16px); animation: fadeIn 0.3s; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.1); backdrop-filter: blur(16px); animation: fadeIn 0.3s; }
         .modal-glass { animation: modalEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes modalEnter { from { opacity: 0; transform: scale(0.96) translateY(30px); } to { opacity: 1; transform: scale(1) translateY(0); } }
@@ -309,31 +323,31 @@
 
                     <div class="grid grid-cols-1 gap-4">
                         <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left">
-                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> 유의어</h4>
+                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.5)]"></span> 유의어</h4>
                             <div class="grid grid-cols-2 gap-2.5">
                                 ${word.synonyms?.map(s => {
                                     const kanji = typeof s === 'string' ? s.split('(')[0] : s.kanji;
                                     const kana = typeof s === 'string' ? (s.includes('(') ? s.split('(')[1].replace(')', '') : '') : s.kana;
                                     return `
-                                        <button onclick="window.searchInDict('${kanji}')" class="premium-chip synonym-btn">
+                                        <button onclick="window.searchInDict('${kanji}')" class="premium-chip synonym-btn group">
+                                            <span class="reading">${kana || '읽기'}</span>
                                             <span class="kanji">${kanji}</span>
-                                            ${kana ? `<span class="reading">(${kana})</span>` : ''}
                                         </button>`;
-                                }).join('') || '<span class="text-gray-300 text-xs font-bold">데이터 없음</span>'}
+                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1">데이터 없음</span>'}
                             </div>
                         </div>
                         <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left">
-                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> 반의어</h4>
+                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_10px_rgba(251,113,133,0.5)]"></span> 반의어</h4>
                             <div class="grid grid-cols-2 gap-2.5">
                                 ${word.antonyms?.map(a => {
                                     const kanji = typeof a === 'string' ? a.split('(')[0] : a.kanji;
                                     const kana = typeof a === 'string' ? (a.includes('(') ? a.split('(')[1].replace(')', '') : '') : a.kana;
                                     return `
-                                        <button onclick="window.searchInDict('${kanji}')" class="premium-chip antonym-btn">
+                                        <button onclick="window.searchInDict('${kanji}')" class="premium-chip antonym-btn group">
+                                            <span class="reading">${kana || '읽기'}</span>
                                             <span class="kanji">${kanji}</span>
-                                            ${kana ? `<span class="reading">(${kana})</span>` : ''}
                                         </button>`;
-                                }).join('') || '<span class="text-gray-300 text-xs font-bold">데이터 없음</span>'}
+                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1">데이터 없음</span>'}
                             </div>
                         </div>
                     </div>
@@ -366,9 +380,9 @@
                                 const kanji = typeof s === 'string' ? s.split('(')[0] : s.kanji;
                                 const kana = typeof s === 'string' ? (s.includes('(') ? s.split('(')[1].replace(')', '') : '') : s.kana;
                                 return `
-                                    <button onclick="window.searchInDict('${kanji}')" class="premium-chip synonym-btn">
+                                    <button onclick="window.searchInDict('${kanji}')" class="premium-chip synonym-btn group">
+                                        <span class="reading">${kana}</span>
                                         <span class="kanji">${kanji}</span>
-                                        ${kana ? `<span class="reading">(${kana})</span>` : ''}
                                     </button>`;
                             }).join('') || '-'}
                         </div>
@@ -380,9 +394,9 @@
                                 const kanji = typeof a === 'string' ? a.split('(')[0] : a.kanji;
                                 const kana = typeof a === 'string' ? (a.includes('(') ? a.split('(')[1].replace(')', '') : '') : a.kana;
                                 return `
-                                    <button onclick="window.searchInDict('${kanji}')" class="premium-chip antonym-btn">
+                                    <button onclick="window.searchInDict('${kanji}')" class="premium-chip antonym-btn group">
+                                        <span class="reading">${kana}</span>
                                         <span class="kanji">${kanji}</span>
-                                        ${kana ? `<span class="reading">(${kana})</span>` : ''}
                                     </button>`;
                             }).join('') || '-'}
                         </div>
