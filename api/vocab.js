@@ -7,13 +7,12 @@ export default async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'API key is missing', detail: 'Vercel 환경 변수에 GEMINI_API_KEY를 등록해 주세요.' });
+    return res.status(500).json({ error: 'API key is missing' });
   }
 
   const isDictMode = !!query;
   const isQuizMode = type === 'quiz';
 
-  // 1. 모드별 시스템 프롬프트 및 스키마 설정
   let systemPrompt, userPrompt, responseSchema;
 
   const itemSchemaProperties = {
@@ -28,29 +27,28 @@ export default async function handler(req, res) {
         properties: { jp: { type: "STRING" }, kr: { type: "STRING" } },
         required: ["jp", "kr"]
       },
-      minItems: 2,
-      description: "단어의 실제 사용 예문 (일본어와 한국어 번역)"
+      minItems: 2
     },
     humble: { 
       type: "OBJECT", 
       nullable: true, 
       properties: { jp: { type: "STRING" }, kr: { type: "STRING" }, note: { type: "STRING" } } 
     },
-    synonyms: { type: "ARRAY", items: { type: "STRING" }, description: "유의어 목록 (한자(히라가나) 형식)" },
-    antonyms: { type: "ARRAY", items: { type: "STRING" }, description: "반의어 목록 (한자(히라가나) 형식)" }
+    synonyms: { type: "ARRAY", items: { type: "STRING" }, description: "반드시 '한자(히라가나)' 형식으로 제공" },
+    antonyms: { type: "ARRAY", items: { type: "STRING" }, description: "반드시 '한자(히라가나)' 형식으로 제공" }
   };
 
   if (isDictMode) {
-    systemPrompt = "전문적인 일한 사전입니다. 정확성이 가장 중요합니다. 유의어와 반의어를 3~5개 제공하세요. 반드시 각 단어에 대한 실용적인 예문을 2개 이상 포함해야 합니다. 모든 일본어 텍스트는 '한자(히라가나)' 형식을 지켜주세요.";
-    userPrompt = `다음 단어를 사전에서 검색해 주세요: ${query}`;
+    systemPrompt = "전문 일한 사전입니다. 유의어와 반의어는 반드시 '한자(히라가나)' 형식으로 3-5개씩 제공하세요. 예문은 상황별로 2개 이상 포함하며, 정확한 한국어 번역을 제공하세요.";
+    userPrompt = `사전 검색: ${query}`;
     responseSchema = { 
       type: "OBJECT", 
       properties: itemSchemaProperties, 
       required: ["kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms"] 
     };
   } else if (isQuizMode) {
-    systemPrompt = `JLPT N${level} 단어 퀴즈 출제자입니다. 10개의 4지선다 문제를 만드세요. 오답은 정답과 혼동될 만한 단어로 구성하세요.`;
-    userPrompt = `JLPT N${level || 2} 수준의 10개 퀴즈를 생성하세요.`;
+    systemPrompt = `JLPT N${level} 퀴즈 출제자입니다. 10개의 4지선다 문제를 만드세요. 해설은 간결한 토스 스타일 문체를 사용하세요.`;
+    userPrompt = `N${level || 2} 수준 퀴즈 10개 생성`;
     responseSchema = {
       type: "OBJECT",
       properties: {
@@ -72,8 +70,8 @@ export default async function handler(req, res) {
       required: ["questions"]
     };
   } else {
-    systemPrompt = `일본어 선생님입니다. JLPT N${level} 수준의 단어 20개를 생성하세요. 한자(히라가나) 형식을 지키고, 다양한 단어를 섞어주세요. 각 단어마다 예문을 2개씩 포함하세요.`;
-    userPrompt = `JLPT N${level || 2} 수준의 랜덤 단어 20개를 생성하세요.`;
+    systemPrompt = `JLPT N${level} 단어 생성기입니다. 20개의 랜덤 단어를 생성하세요. 유의어/반의어는 반드시 '한자(히라가나)' 형식으로 포함하세요.`;
+    userPrompt = `N${level || 2} 단어 20개 생성`;
     responseSchema = { 
       type: "ARRAY", 
       items: { 
@@ -97,20 +95,11 @@ export default async function handler(req, res) {
           generationConfig: { responseMimeType: "application/json", responseSchema }
         })
       });
-
-      if (!response.ok) {
-        if (response.status === 429 && retries > 0) throw new Error('RATE_LIMIT');
-        throw new Error(`Status: ${response.status}`);
-      }
-
       const result = await response.json();
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error("Empty AI response");
-      
-      return JSON.parse(text);
+      return JSON.parse(result.candidates[0].content.parts[0].text);
     } catch (err) {
       if (retries > 0) {
-        await new Promise(r => setTimeout(r, Math.pow(2, 6 - retries) * 1000));
+        await new Promise(r => setTimeout(r, 1000));
         return callGemini(retries - 1);
       }
       throw err;
@@ -121,6 +110,6 @@ export default async function handler(req, res) {
     const data = await callGemini();
     res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch data', message: error.message });
+    res.status(500).json({ error: 'API Error' });
   }
 }
