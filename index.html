@@ -7,7 +7,7 @@
     <!-- Pretendard JP Font -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-jp.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script>
         tailwind.config = {
             theme: {
@@ -16,12 +16,16 @@
                         'toss-blue': '#3182F6',
                         'toss-text': '#191F28',
                         'toss-muted': '#8B95A1',
-                        'glass-white': 'rgba(255, 255, 255, 0.7)',
-                        'pastel-blue': '#E3F2FD',
+                        'glass-white': 'rgba(255, 255, 255, 0.75)',
+                        'pastel-blue': '#EBF3FF',
                         'pastel-purple': '#F3E5F5',
                         'pastel-green': '#E8F5E9',
-                        'pastel-pink': '#FCE4EC',
+                        'pastel-pink': '#FFF0F3',
                         'pastel-orange': '#FFF3E0',
+                    },
+                    boxShadow: {
+                        'soft': '0 8px 30px rgba(0, 0, 0, 0.04)',
+                        'glass-hover': '0 12px 40px rgba(49, 130, 246, 0.12)',
                     }
                 },
             },
@@ -34,53 +38,61 @@
             color: #191F28; 
             -webkit-font-smoothing: antialiased; 
             -webkit-tap-highlight-color: transparent;
-            letter-spacing: -0.01em;
+            letter-spacing: -0.02em;
         }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
         .view-content { animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes slideUpFade { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         
         /* Glassmorphism Elements */
-        .glass-panel { background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px); border: 1px solid rgba(255, 255, 255, 0.4); }
-        .toss-card { background: #ffffff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); border: 1px solid rgba(0,0,0,0.03); }
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px); border: 1px solid rgba(255, 255, 255, 0.5); }
+        .toss-card { background: #ffffff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); border: 1px solid rgba(0,0,0,0.04); }
         
-        /* Advanced Chip Styles */
-        .chip-container {
-            @apply p-6 rounded-[36px] border border-white/50 shadow-sm transition-all duration-300;
-            background: rgba(255, 255, 255, 0.3);
+        /* Modernized Chip Styles */
+        .chip-group-container {
+            @apply p-6 rounded-[40px] bg-white/40 border border-white/60 shadow-soft transition-all duration-500 overflow-hidden relative;
         }
 
         .chip-base {
-            @apply px-3 py-1.5 rounded-2xl text-[11px] font-black cursor-pointer transition-all duration-300 border border-transparent;
-            position: relative;
+            @apply px-3.5 py-2 rounded-2xl text-[12px] font-bold cursor-pointer transition-all duration-300 border border-white/50 backdrop-blur-md;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
         }
 
-        .chip-synonym { @apply bg-white/60 text-blue-600; }
+        /* Synonym Style: Deep Blue Gradient Bloom */
+        .chip-synonym {
+            @apply bg-gradient-to-br from-blue-50/80 to-indigo-50/80 text-blue-600;
+        }
         .chip-synonym:hover {
-            @apply bg-toss-blue text-white scale-[1.08] shadow-lg shadow-blue-200/50;
-            transform: translateY(-2px);
+            @apply bg-blue-500 text-white border-blue-400 scale-[1.08] -translate-y-1;
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
         }
 
-        .chip-antonym { @apply bg-white/60 text-pink-600; }
+        /* Antonym Style: Soft Rose Gradient Bloom */
+        .chip-antonym {
+            @apply bg-gradient-to-br from-rose-50/80 to-pink-50/80 text-rose-500;
+        }
         .chip-antonym:hover {
-            @apply bg-red-500 text-white scale-[1.08] shadow-lg shadow-red-200/50;
-            transform: translateY(-2px);
+            @apply bg-rose-500 text-white border-rose-400 scale-[1.08] -translate-y-1;
+            box-shadow: 0 10px 25px -5px rgba(244, 63, 94, 0.4);
         }
 
         /* Modal styling */
-        .modal-overlay { background: rgba(0, 0, 0, 0.15); backdrop-filter: blur(14px); animation: fadeIn 0.4s ease-out; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.12); backdrop-filter: blur(12px); animation: fadeIn 0.4s ease-out; }
         .modal-glass { animation: modalEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalEnter { from { opacity: 0; transform: scale(0.96) translateY(30px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes modalEnter { from { opacity: 0; transform: scale(0.97) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         
-        .loading-spinner { width: 40px; height: 40px; border: 4px solid rgba(49, 130, 246, 0.1); border-top: 4px solid #3182F6; border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        .loading-spinner { width: 44px; height: 44px; border: 4px solid rgba(49, 130, 246, 0.08); border-top: 4px solid #3182F6; border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .btn-press:active { transform: scale(0.96); }
         .shake { animation: shake 0.4s ease-in-out; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
         .skeleton { background: linear-gradient(90deg, #F2F4F6 25%, #E5E8EB 50%, #F2F4F6 75%); background-size: 200% 100%; animation: pulse 1.5s infinite linear; }
         @keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Typography spacing */
+        .jp-text { letter-spacing: -0.01em; line-height: 1.4; }
     </style>
 </head>
 <body class="flex flex-col items-center">
@@ -88,34 +100,34 @@
     <div id="app" class="w-full max-w-md min-h-screen bg-white flex flex-col relative overflow-hidden shadow-2xl">
         
         <!-- App Header -->
-        <header id="app-header" class="px-6 pt-14 pb-4 flex justify-between items-center sticky top-0 bg-white/70 backdrop-blur-xl z-30">
+        <header id="app-header" class="px-6 pt-14 pb-4 flex justify-between items-center sticky top-0 bg-white/75 backdrop-blur-xl z-30 border-b border-black/[0.02]">
             <div class="flex flex-col text-left">
-                <span class="text-[10px] font-black text-toss-blue tracking-[0.2em] uppercase opacity-70">JLPT Master</span>
-                <h1 class="text-xl font-black text-toss-text tracking-tight" id="header-title">오늘의 학습</h1>
+                <span class="text-[10px] font-black text-toss-blue tracking-[0.25em] uppercase opacity-80">JLPT Master</span>
+                <h1 class="text-[20px] font-black text-toss-text tracking-tight" id="header-title">오늘의 학습</h1>
             </div>
-            <div id="quiz-badge" class="hidden bg-blue-50 text-toss-blue px-4 py-1.5 rounded-full text-[11px] font-black tracking-tight">정답률 0%</div>
+            <div id="quiz-badge" class="hidden bg-blue-50 text-toss-blue px-4 py-1.5 rounded-full text-[11px] font-black tracking-tighter uppercase">정답률 0%</div>
         </header>
 
-        <!-- Main View Container -->
+        <!-- Main Container -->
         <main id="main-content" class="flex-1 px-6 pb-40 overflow-y-auto no-scrollbar">
             <!-- Content -->
         </main>
 
-        <!-- Glass Modal -->
+        <!-- Global Modal Container -->
         <div id="modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-6">
             <div class="modal-overlay absolute inset-0" onclick="window.closeModal()"></div>
-            <div class="modal-glass glass-panel relative w-full max-w-sm rounded-[44px] p-8 shadow-2xl border border-white/50 z-10">
-                <button type="button" onclick="window.closeModal()" class="absolute top-7 right-7 w-10 h-10 bg-black/5 hover:bg-black/10 rounded-full flex items-center justify-center text-gray-500 btn-press transition-colors z-20">
+            <div class="modal-glass glass-panel relative w-full max-w-sm rounded-[48px] p-9 shadow-2xl border border-white/60 z-10 overflow-hidden">
+                <button type="button" onclick="window.closeModal()" class="absolute top-7 right-7 w-10 h-10 bg-black/[0.04] hover:bg-black/[0.08] rounded-full flex items-center justify-center text-gray-500 btn-press transition-all z-20">
                     <i class="fas fa-times text-sm"></i>
                 </button>
                 <div id="modal-body"></div>
             </div>
         </div>
 
-        <!-- Floating Navigation -->
-        <nav class="fixed bottom-8 w-[calc(100%-48px)] max-w-[384px] left-1/2 -translate-x-1/2 glass-panel border border-white/50 rounded-[36px] px-8 py-4 flex justify-around items-center shadow-2xl safe-area-bottom z-40">
+        <!-- Navigation Bar -->
+        <nav class="fixed bottom-8 w-[calc(100%-48px)] max-w-[384px] left-1/2 -translate-x-1/2 glass-panel border border-white/50 rounded-[38px] px-8 py-4 flex justify-around items-center shadow-2xl safe-area-bottom z-40">
             <button onclick="window.nav('generator')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-generator">
-                <i class="fas fa-sparkles text-xl"></i>
+                <i class="fas fa-plus-circle text-xl"></i>
                 <span class="text-[10px] font-black">생성</span>
             </button>
             <button onclick="window.nav('folders')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-folders">
@@ -123,17 +135,17 @@
                 <span class="text-[10px] font-black">보관함</span>
             </button>
             <button onclick="window.nav('quiz')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-quiz">
-                <i class="fas fa-bolt-lightning text-xl"></i>
+                <i class="fas fa-bolt text-xl"></i>
                 <span class="text-[10px] font-black">퀴즈</span>
             </button>
             <button onclick="window.nav('dict')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-dict">
-                <i class="fas fa-book-open text-xl"></i>
+                <i class="fas fa-magnifying-glass text-xl"></i>
                 <span class="text-[10px] font-black">사전</span>
             </button>
         </nav>
         
         <!-- Toast Notification -->
-        <div id="toast" class="fixed top-12 left-1/2 -translate-x-1/2 px-5 py-3 bg-gray-900/90 text-white text-[13px] font-bold rounded-2xl shadow-xl z-[70] opacity-0 transition-all duration-300 pointer-events-none"></div>
+        <div id="toast" class="fixed top-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-gray-900/90 text-white text-[13px] font-bold rounded-2xl shadow-xl z-[70] opacity-0 transition-all duration-300 pointer-events-none"></div>
     </div>
 
     <script type="module">
@@ -187,7 +199,7 @@
         };
 
         const renderLoading = () => {
-            main.innerHTML = `<div class="pt-10 space-y-6">${Array(4).fill('<div class="h-32 skeleton rounded-[40px] w-full"></div>').join('')}</div>`;
+            main.innerHTML = `<div class="pt-10 space-y-6">${Array(4).fill('<div class="h-32 skeleton rounded-[44px] w-full"></div>').join('')}</div>`;
         };
 
         const renderGenerator = () => {
@@ -195,15 +207,15 @@
             const colors = { 1: 'bg-pastel-blue', 2: 'bg-pastel-purple', 3: 'bg-pastel-green', 4: 'bg-pastel-orange' };
             main.innerHTML = `
                 <div class="view-content pt-6">
-                    <div class="flex gap-2 mb-8">
-                        ${[1,2,3,4].map(n => `<button onclick="window.setLevel(${n})" class="flex-1 py-4 rounded-2xl font-black text-sm transition-all border-2 ${state.level === n ? 'bg-white border-toss-blue text-toss-blue shadow-lg shadow-blue-50' : 'bg-white text-gray-300 border-gray-100'}">N${n}</button>`).join('')}
+                    <div class="flex gap-2.5 mb-8">
+                        ${[1,2,3,4].map(n => `<button onclick="window.setLevel(${n})" class="flex-1 py-4 rounded-3xl font-black text-sm transition-all border-2 ${state.level === n ? 'bg-white border-toss-blue text-toss-blue shadow-lg shadow-blue-50' : 'bg-white text-gray-300 border-gray-100'}">N${n}</button>`).join('')}
                     </div>
-                    <button onclick="window.generate()" class="w-full py-5 bg-toss-blue text-white rounded-[28px] font-black text-[17px] shadow-xl shadow-blue-100 btn-press mb-10 transition-all">랜덤 단어 생성하기</button>
+                    <button onclick="window.generate()" class="w-full py-5 bg-toss-blue text-white rounded-[32px] font-black text-[17px] shadow-xl shadow-blue-100 btn-press mb-12 transition-all">랜덤 단어 생성하기</button>
                     <div class="space-y-4">
                         ${state.words.map((w, i) => `
-                            <div onclick="window.openDetail(${i}, 'gen')" class="p-7 rounded-[40px] ${colors[state.level]} border border-white flex justify-between items-center shadow-sm btn-press cursor-pointer group">
-                                <div class="text-left"><div class="flex items-center gap-2 mb-1"><span class="text-[22px] font-black text-gray-800">${w.kanji}</span><span class="text-[11px] font-black px-2 py-0.5 bg-white/60 rounded-full text-gray-500">${w.kana}</span></div><p class="text-[15px] text-gray-600 font-bold">${w.korean_meaning}</p></div>
-                                <div class="w-10 h-10 rounded-full bg-white/40 flex items-center justify-center text-gray-400 group-hover:bg-white transition-colors"><i class="fas fa-chevron-right text-xs"></i></div>
+                            <div onclick="window.openDetail(${i}, 'gen')" class="p-7 rounded-[44px] ${colors[state.level]} border border-white flex justify-between items-center shadow-soft btn-press cursor-pointer group">
+                                <div class="text-left"><div class="flex items-center gap-2 mb-1.5"><span class="text-[22px] font-black text-toss-text jp-text">${w.kanji}</span><span class="text-[11px] font-black px-2.5 py-0.5 bg-white/60 rounded-full text-gray-500">${w.kana}</span></div><p class="text-[15px] text-gray-600 font-bold">${w.korean_meaning}</p></div>
+                                <div class="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center text-gray-400 group-hover:bg-white transition-all shadow-sm"><i class="fas fa-chevron-right text-xs"></i></div>
                             </div>
                         `).join('')}
                     </div>
@@ -216,14 +228,14 @@
             main.innerHTML = `
                 <div class="view-content pt-6 grid grid-cols-2 gap-4">
                     ${state.folders.map((f) => `
-                        <div onclick="window.openFolder('${f.id}')" class="p-6 rounded-[40px] bg-white border border-gray-100 shadow-sm btn-press cursor-pointer">
-                            <div class="w-12 h-12 rounded-3xl bg-pastel-blue flex items-center justify-center text-toss-blue mb-5 shadow-inner"><i class="fas fa-folder"></i></div>
-                            <h3 class="font-black text-[17px] mb-1 truncate">${f.name}</h3>
+                        <div onclick="window.openFolder('${f.id}')" class="p-7 rounded-[44px] bg-white border border-gray-100 shadow-soft btn-press cursor-pointer flex flex-col items-start">
+                            <div class="w-12 h-12 rounded-[22px] bg-pastel-blue flex items-center justify-center text-toss-blue mb-5 shadow-inner"><i class="fas fa-folder"></i></div>
+                            <h3 class="font-black text-[17px] mb-1 truncate w-full text-left">${f.name}</h3>
                             <p class="text-[12px] text-gray-400 font-bold">${f.words.length} 단어</p>
                         </div>
                     `).join('')}
-                    <button onclick="window.createFolder()" class="p-6 rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 gap-2 btn-press">
-                        <i class="fas fa-plus"></i><span class="text-xs font-bold">폴더 추가</span>
+                    <button onclick="window.createFolder()" class="p-7 rounded-[44px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 gap-2 btn-press transition-colors hover:border-toss-blue hover:text-toss-blue">
+                        <i class="fas fa-plus"></i><span class="text-[11px] font-black uppercase tracking-widest">Add Folder</span>
                     </button>
                 </div>
             `;
@@ -233,11 +245,11 @@
             const folder = state.folders.find(f => f.id === state.currentFolderId);
             document.getElementById('header-title').textContent = folder.name;
             main.innerHTML = `
-                <div class="view-content pt-6 space-y-4">
-                    <button onclick="window.nav('folders')" class="text-gray-400 font-bold text-sm mb-4"><i class="fas fa-arrow-left mr-2"></i>돌아가기</button>
+                <div class="view-content pt-6 space-y-4 text-left">
+                    <button onclick="window.nav('folders')" class="text-gray-400 font-bold text-[13px] mb-6 flex items-center hover:text-toss-blue transition-colors"><i class="fas fa-arrow-left mr-2"></i>보관함 돌아가기</button>
                     ${folder.words.map((w, i) => `
-                        <div onclick="window.openDetail(${i}, 'folder')" class="p-7 rounded-[40px] bg-white border border-gray-100 flex justify-between items-center shadow-sm btn-press cursor-pointer">
-                            <div class="text-left"><div class="flex items-center gap-2 mb-1"><span class="text-[18px] font-black">${w.kanji}</span><span class="text-[11px] text-toss-blue font-black">${w.kana}</span></div><p class="text-[15px] text-gray-500 font-bold">${w.korean_meaning}</p></div>
+                        <div onclick="window.openDetail(${i}, 'folder')" class="p-7 rounded-[44px] bg-white border border-gray-100 flex justify-between items-center shadow-soft btn-press cursor-pointer">
+                            <div class="text-left"><div class="flex items-center gap-2 mb-1.5"><span class="text-[18px] font-black text-toss-text jp-text">${w.kanji}</span><span class="text-[11px] text-toss-blue font-black">${w.kana}</span></div><p class="text-[15px] text-gray-500 font-bold">${w.korean_meaning}</p></div>
                             <div class="text-gray-200"><i class="fas fa-chevron-right text-xs"></i></div>
                         </div>
                     `).join('')}
@@ -255,18 +267,18 @@
                             <i class="fas fa-bolt-lightning text-4xl text-orange-400"></i>
                         </div>
                         <h2 class="text-2xl font-black mb-10 tracking-tight">학습 목표를 정해주세요</h2>
-                        <div class="space-y-3 w-full">
-                            <button onclick="window.startQuiz('local')" class="w-full p-8 rounded-[36px] bg-white border border-gray-100 shadow-sm text-left btn-press group">
-                                <span class="text-[10px] font-black text-toss-blue uppercase tracking-widest block mb-2">My Vocabulary</span>
-                                <i class="fas fa-folder-open text-xl mb-3 block text-toss-blue"></i>
+                        <div class="space-y-4 w-full">
+                            <button onclick="window.startQuiz('local')" class="w-full p-8 rounded-[44px] bg-white border border-gray-100 shadow-soft text-left btn-press group">
+                                <span class="text-[11px] font-black text-toss-blue uppercase tracking-widest block mb-2 opacity-60">Personal Review</span>
+                                <i class="fas fa-folder-open text-xl mb-4 block text-toss-blue"></i>
                                 <h3 class="text-lg font-black mb-1">보관함 복습 퀴즈</h3>
-                                <p class="text-[13px] text-gray-400 font-bold">내가 저장한 "${count}개" 단어 위주로 출제됩니다.</p>
+                                <p class="text-[13px] text-gray-400 font-bold leading-snug">저장한 단어 "${count}개" 중에서 <br> 무작위로 출제됩니다.</p>
                             </button>
-                            <button onclick="window.startQuiz('ai')" class="w-full p-8 rounded-[36px] bg-gradient-to-br from-toss-blue to-blue-600 text-white shadow-xl btn-press text-left">
-                                <span class="text-[10px] font-black text-white/60 uppercase tracking-widest block mb-2">AI Generated</span>
-                                <i class="fas fa-brain text-xl mb-3 block text-white/90"></i>
+                            <button onclick="window.startQuiz('ai')" class="w-full p-8 rounded-[44px] bg-gradient-to-br from-toss-blue to-blue-600 text-white shadow-xl btn-press text-left">
+                                <span class="text-[11px] font-black text-white/50 uppercase tracking-widest block mb-2">Practice Exam</span>
+                                <i class="fas fa-brain text-xl mb-4 block text-white/90"></i>
                                 <h3 class="text-lg font-black mb-1">N${state.level} 실전 모의고사</h3>
-                                <p class="text-[13px] text-white/70 font-bold">AI가 엄선한 레벨별 핵심 단어가 출제됩니다.</p>
+                                <p class="text-[13px] text-white/70 font-bold leading-snug">AI가 해당 레벨의 필수 단어를 <br> 직접 구성하여 출제합니다.</p>
                             </button>
                         </div>
                     </div>
@@ -275,30 +287,30 @@
                 const q = state.quiz.questions[state.quiz.currentIdx];
                 const progress = ((state.quiz.currentIdx + 1) / state.quiz.questions.length) * 100;
                 main.innerHTML = `
-                    <div class="view-content pt-6">
-                        <div class="w-full h-1.5 bg-gray-100 rounded-full mb-10 overflow-hidden"><div class="h-full bg-toss-blue transition-all duration-500" style="width: ${progress}%"></div></div>
-                        <div class="toss-card p-12 text-center mb-10 bg-gradient-to-br from-white to-gray-50/30">
-                            <span class="text-[12px] font-black text-toss-blue uppercase tracking-widest opacity-40 mb-4 block">Question ${state.quiz.currentIdx + 1}</span>
-                            <h2 class="text-5xl font-black tracking-tighter mb-4">${q.word || q.question_word}</h2>
-                            <p class="text-lg font-bold text-gray-300 tracking-wider">${q.reading || ''}</p>
+                    <div class="view-content pt-6 text-left">
+                        <div class="w-full h-1.5 bg-gray-100 rounded-full mb-12 overflow-hidden"><div class="h-full bg-toss-blue transition-all duration-500" style="width: ${progress}%"></div></div>
+                        <div class="toss-card p-12 text-center mb-10 bg-gradient-to-br from-white to-gray-50/40">
+                            <span class="text-[11px] font-black text-toss-blue uppercase tracking-widest opacity-40 mb-5 block">Question ${state.quiz.currentIdx + 1}</span>
+                            <h2 class="text-6xl font-black tracking-tighter mb-4 text-toss-text jp-text">${q.word || q.question_word}</h2>
+                            <p class="text-[18px] font-bold text-gray-300 tracking-wide">${q.reading || ''}</p>
                         </div>
-                        <div class="grid grid-cols-1 gap-3">
+                        <div class="grid grid-cols-1 gap-3.5">
                             ${q.options.map((opt, idx) => {
-                                let style = "bg-white border-gray-50";
+                                let style = "bg-white border-gray-50 hover:border-gray-200";
                                 if (state.quiz.answered) {
                                     if (idx === (q.answer_idx !== undefined ? q.answer_idx : q.correctIdx)) style = "bg-blue-50 border-toss-blue text-toss-blue";
                                     else if (idx === state.quiz.selectedIdx) style = "bg-red-50 border-red-200 text-red-400 shake";
-                                    else style = "opacity-40 grayscale";
+                                    else style = "opacity-40 grayscale pointer-events-none";
                                 }
-                                return `<button onclick="window.submitAnswer(${idx})" ${state.quiz.answered ? 'disabled' : ''} class="w-full p-6 rounded-[28px] border-2 font-bold text-[16px] text-left transition-all flex justify-between items-center ${style}"><span>${opt}</span></button>`;
+                                return `<button onclick="window.submitAnswer(${idx})" ${state.quiz.answered ? 'disabled' : ''} class="w-full p-6 rounded-[32px] border-2 font-black text-[16px] text-left transition-all duration-300 flex justify-between items-center ${style}"><span>${opt}</span></button>`;
                             }).join('')}
                         </div>
                         ${state.quiz.answered ? `
-                        <div class="mt-8 p-6 rounded-[32px] bg-gray-50 border border-white view-content text-left">
-                            <p class="text-[13px] text-gray-400 font-bold mb-1 uppercase tracking-widest">해설</p>
-                            <p class="text-sm font-bold text-gray-600 leading-relaxed">${q.explanation || '정답입니다!'}</p>
+                        <div class="mt-8 p-7 rounded-[40px] bg-gray-50 border border-white view-content text-left">
+                            <p class="text-[11px] text-gray-400 font-black mb-1.5 uppercase tracking-widest opacity-60">Analysis</p>
+                            <p class="text-[14px] font-bold text-gray-600 leading-relaxed">${q.explanation || '정답입니다! 훌륭한 실력이네요.'}</p>
                         </div>
-                        <button onclick="window.nextQuestion()" class="w-full mt-10 py-5 bg-toss-blue text-white rounded-[28px] font-black shadow-xl btn-press view-content">결과 보기</button>` : ''}
+                        <button onclick="window.nextQuestion()" class="w-full mt-10 py-5 bg-toss-blue text-white rounded-[32px] font-black shadow-xl btn-press view-content">다음 문제 확인</button>` : ''}
                     </div>
                 `;
             }
@@ -307,15 +319,16 @@
         const renderDict = () => {
             document.getElementById('header-title').textContent = '모찌 사전';
             main.innerHTML = `
-                <div class="view-content pt-10 flex flex-col space-y-8 text-center">
+                <div class="view-content pt-12 flex flex-col space-y-10 text-center">
                     <div class="space-y-4">
-                        <div class="w-24 h-24 bg-white toss-card flex items-center justify-center mx-auto text-5xl">🍡</div>
-                        <h2 class="text-4xl font-black tracking-tighter">모찌 사전</h2>
+                        <div class="w-24 h-24 bg-white toss-card flex items-center justify-center mx-auto text-5xl shadow-soft">🍡</div>
+                        <h2 class="text-4xl font-black tracking-tight text-toss-text">모찌 사전</h2>
+                        <p class="text-[13px] font-bold text-gray-400 tracking-[0.1em] opacity-60 uppercase tracking-widest">Contextual Analysis</p>
                     </div>
                     <div class="relative text-left">
-                        <input type="text" id="dictInput" value="${state.dictSearch}" placeholder="단어를 입력하세요" class="w-full bg-white toss-card py-5 px-14 text-lg outline-none border-none shadow-xl shadow-black/[0.03]">
-                        <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-toss-blue"></i>
-                        <button onclick="window.searchDict()" class="absolute right-4 top-1/2 -translate-y-1/2 px-5 py-2.5 bg-toss-blue text-white rounded-2xl text-[11px] font-black btn-press">검색</button>
+                        <input type="text" id="dictInput" value="${state.dictSearch}" placeholder="단어 또는 문장을 입력하세요" class="w-full bg-white toss-card py-5 px-14 text-lg outline-none border-none shadow-xl shadow-black/[0.04] focus:ring-4 focus:ring-toss-blue/5 transition-all">
+                        <i class="fas fa-magnifying-glass absolute left-6 top-1/2 -translate-y-1/2 text-toss-blue opacity-50"></i>
+                        <button onclick="window.searchDict()" class="absolute right-4 top-1/2 -translate-y-1/2 px-5 py-2.5 bg-toss-blue text-white rounded-[20px] text-[11px] font-black btn-press shadow-lg shadow-blue-100">검색</button>
                     </div>
                     <div id="dictResults"></div>
                 </div>
@@ -329,12 +342,12 @@
             if(!query.trim()) return;
             state.dictSearch = query;
             const container = document.getElementById('dictResults');
-            if(container) container.innerHTML = `<div class="flex flex-col items-center py-20 gap-5"><div class="loading-spinner"></div><p class="text-sm font-bold text-gray-300">정교하게 분석 중...</p></div>`;
+            if(container) container.innerHTML = `<div class="flex flex-col items-center py-24 gap-6"><div class="loading-spinner"></div><p class="text-[14px] font-black text-gray-300 tracking-widest uppercase">Deep Analyzing...</p></div>`;
             try {
                 const response = await fetch('/api/vocab', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
                 const data = await response.json();
                 renderDictResult(data); 
-            } catch (e) { container.innerHTML = `<p class="text-center py-20 text-red-200 font-bold">정보를 가져오지 못했습니다.</p>`; }
+            } catch (e) { container.innerHTML = `<p class="text-center py-20 text-red-300 font-bold">오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>`; }
         };
 
         const renderDictResult = (word) => {
@@ -342,40 +355,56 @@
             if(!container) return;
             container.innerHTML = `
                 <div class="space-y-6 view-content text-left">
-                    <div class="toss-card p-12 text-center relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50">
-                        <span class="px-5 py-1.5 bg-gray-50 text-toss-blue rounded-full text-[12px] font-black mb-6 tracking-widest inline-block">${word.kana}</span>
-                        <h2 class="text-6xl font-black mb-6 tracking-tighter text-toss-text">${word.kanji}</h2>
+                    <div class="toss-card p-14 text-center relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50">
+                        <span class="px-5 py-1.5 bg-gray-50 text-toss-blue rounded-full text-[12px] font-black mb-7 tracking-widest inline-block border border-black/[0.03]">${word.kana}</span>
+                        <h2 class="text-6xl font-black mb-6 tracking-tighter text-toss-text jp-text">${word.kanji}</h2>
                         <p class="text-2xl text-gray-500 font-bold tracking-tight">${word.korean_meaning}</p>
                     </div>
 
                     ${word.humble ? `
-                    <div class="p-8 rounded-[40px] bg-gradient-to-br from-pastel-pink/40 to-[#FFF5F5] border border-pastel-pink shadow-sm">
-                        <h3 class="text-[10px] font-black text-pink-500 mb-4 uppercase tracking-[0.2em] opacity-60">✨ 정중한 표현</h3>
-                        <p class="text-2xl font-black text-pink-700 mb-2">${word.humble.jp}</p>
+                    <div class="p-9 rounded-[48px] bg-gradient-to-br from-pastel-pink/50 to-white border border-pastel-pink shadow-soft">
+                        <h3 class="text-[11px] font-black text-pink-500 mb-4 uppercase tracking-[0.2em] opacity-70">✨ Keigo Analysis</h3>
+                        <p class="text-2xl font-black text-rose-600 mb-2 jp-text">${word.humble.jp}</p>
                         <p class="text-lg font-bold text-gray-600 mb-4">${word.humble.kr}</p>
-                        <p class="text-[13px] text-gray-400 font-medium leading-relaxed font-medium">${word.humble.note}</p>
+                        <p class="text-[13px] text-gray-400 font-medium leading-relaxed bg-white/40 p-4 rounded-3xl">${word.humble.note}</p>
                     </div>` : ''}
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="chip-container">
-                            <h4 class="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-5">유의어</h4>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="chip-group-container">
+                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> 유의어
+                            </h4>
                             <div class="flex flex-wrap gap-2.5">
                                 ${word.synonyms && word.synonyms.length > 0 ? word.synonyms.map(s => `
                                     <span onclick="window.searchInDict('${s.split('(')[0]}')" class="chip-base chip-synonym">
                                         ${s}
-                                    </span>`).join('') : '<span class="text-xs text-gray-200">없음</span>'}
+                                    </span>`).join('') : '<span class="text-xs text-gray-200 font-bold">데이터 없음</span>'}
                             </div>
                         </div>
-                        <div class="chip-container">
-                            <h4 class="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-5">반의어</h4>
+                        <div class="chip-group-container">
+                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> 반의어
+                            </h4>
                             <div class="flex flex-wrap gap-2.5">
                                 ${word.antonyms && word.antonyms.length > 0 ? word.antonyms.map(a => `
                                     <span onclick="window.searchInDict('${a.split('(')[0]}')" class="chip-base chip-antonym">
                                         ${a}
-                                    </span>`).join('') : '<span class="text-xs text-gray-200">없음</span>'}
+                                    </span>`).join('') : '<span class="text-xs text-gray-200 font-bold">데이터 없음</span>'}
                             </div>
                         </div>
                     </div>
+
+                    ${word.examples && word.examples.length > 0 ? `
+                    <div class="toss-card p-9 text-left">
+                        <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-8 opacity-60">Contextual Examples</h4>
+                        <div class="space-y-5">
+                            ${word.examples.map(ex => `
+                                <div class="p-7 rounded-[40px] bg-gray-50/80 border border-white/80 hover:bg-white transition-all shadow-sm">
+                                    <p class="text-[17px] font-bold mb-2.5 text-toss-text leading-snug tracking-tight jp-text text-left">${ex.jp}</p>
+                                    <p class="text-gray-400 text-sm font-bold tracking-tight text-left">${ex.kr}</p>
+                                </div>`).join('')}
+                        </div>
+                    </div>` : ''}
                 </div>
             `;
         };
@@ -384,47 +413,65 @@
             const word = type === 'gen' ? state.words[index] : state.folders.find(f => f.id === state.currentFolderId).words[index];
             const isSaved = state.folders.some(f => f.words.some(w => w.kanji === word.kanji));
             modalBody.innerHTML = `
-                <div class="flex flex-col items-center text-center mb-8 view-content text-left">
-                    <span class="text-[10px] font-black text-toss-blue px-3 py-1 bg-blue-50 rounded-full mb-5 uppercase tracking-tighter">${word.part_of_speech || 'N' + state.level}</span>
-                    <h2 class="text-5xl font-black mb-3 tracking-tighter text-toss-text text-center">${word.kanji}</h2>
-                    <p class="text-lg font-bold text-gray-300 mb-8 tracking-wider text-center">${word.kana}</p>
-                    <p class="text-[22px] font-black text-gray-800 tracking-tight text-center">${word.korean_meaning}</p>
+                <div class="flex flex-col items-center text-center mb-10 view-content">
+                    <span class="text-[11px] font-black text-toss-blue px-4 py-1.5 bg-blue-50 rounded-full mb-6 uppercase tracking-widest border border-blue-100">${word.part_of_speech || 'JLPT N' + state.level}</span>
+                    <h2 class="text-5xl font-black mb-4 tracking-tighter text-toss-text jp-text">${word.kanji}</h2>
+                    <p class="text-[18px] font-bold text-gray-300 mb-8 tracking-wider">${word.kana}</p>
+                    <p class="text-[24px] font-black text-gray-800 tracking-tight">${word.korean_meaning}</p>
                 </div>
+
+                ${word.examples && word.examples.length > 0 ? `
+                <div class="mb-10 text-left">
+                    <p class="text-[10px] font-black text-gray-400 mb-4 uppercase tracking-[0.2em] ml-1">Usage Examples</p>
+                    <div class="space-y-3">
+                        ${word.examples.map(ex => `
+                            <div class="p-5 rounded-[32px] bg-gray-50/80 border border-white shadow-sm">
+                                <p class="text-[15px] font-bold text-toss-text mb-1 leading-snug jp-text">${ex.jp}</p>
+                                <p class="text-[13px] text-gray-400 font-bold">${ex.kr}</p>
+                            </div>`).join('')}
+                    </div>
+                </div>` : ''}
+
                 <div class="grid grid-cols-1 gap-4 mb-10 text-left">
-                    <div class="chip-container">
-                        <p class="text-[10px] font-black text-blue-800/40 mb-3 uppercase tracking-widest">유의어</p>
-                        <div class="flex flex-wrap gap-2">
+                    <div class="chip-group-container">
+                        <p class="text-[10px] font-black text-blue-600/40 mb-4 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400/50"></span> Synonyms</p>
+                        <div class="flex flex-wrap gap-2 text-left">
                             ${(word.synonyms || []).map(s => `<span onclick="window.searchInDict('${s.split('(')[0]}')" class="chip-base chip-synonym">${s}</span>`).join('') || '-'}
                         </div>
                     </div>
-                    <div class="chip-container">
-                        <p class="text-[10px] font-black text-pink-800/40 mb-3 uppercase tracking-widest">반의어</p>
-                        <div class="flex flex-wrap gap-2">
+                    <div class="chip-group-container">
+                        <p class="text-[10px] font-black text-rose-600/40 mb-4 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400/50"></span> Antonyms</p>
+                        <div class="flex flex-wrap gap-2 text-left">
                             ${(word.antonyms || []).map(a => `<span onclick="window.searchInDict('${a.split('(')[0]}')" class="chip-base chip-antonym">${a}</span>`).join('') || '-'}
                         </div>
                     </div>
                 </div>
-                <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-3.5">
                     <div class="flex gap-3 h-14">
-                        <select id="folder-select" class="flex-1 px-6 bg-black/5 rounded-[24px] font-black text-xs outline-none appearance-none cursor-pointer">
-                            ${state.folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
-                        </select>
-                        <button onclick="window.saveToFolder('${encodeURIComponent(JSON.stringify(word))}')" class="flex-[1.8] bg-toss-blue text-white rounded-[24px] font-black text-sm shadow-xl shadow-blue-50 btn-press">
+                        <div class="flex-1 relative">
+                            <select id="folder-select" class="w-full h-full px-6 bg-black/[0.04] rounded-[28px] font-black text-[13px] outline-none appearance-none cursor-pointer text-gray-600 pr-10">
+                                ${state.folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                        </div>
+                        <button onclick="window.saveToFolder('${encodeURIComponent(JSON.stringify(word))}')" class="flex-[1.6] bg-toss-blue text-white rounded-[28px] font-black text-sm shadow-xl shadow-blue-100 btn-press">
                             ${isSaved ? '다른 폴더 추가' : '단어장 저장'}
                         </button>
                     </div>
-                    <button onclick="window.searchInDict('${word.kanji}')" class="w-full h-14 bg-gray-50 text-toss-muted rounded-[24px] font-black text-xs btn-press border border-gray-100">모찌 사전에서 분석하기</button>
+                    <button onclick="window.searchInDict('${word.kanji}')" class="w-full h-14 bg-gray-50 hover:bg-gray-100 text-toss-muted rounded-[28px] font-black text-[12px] btn-press border border-gray-100 transition-colors uppercase tracking-widest">
+                        <i class="fas fa-magnifying-glass mr-2"></i>Analyze in Dict
+                    </button>
                 </div>
             `;
             modal.classList.remove('hidden');
         };
 
-        window.nav = (v) => { state.view = v; updateUI(); window.scrollTo(0,0); };
+        // --- Logic Handlers ---
+        window.nav = (v) => { state.view = v; updateUI(); window.scrollTo({top: 0, behavior: 'smooth'}); };
         window.setLevel = (l) => { state.level = l; updateUI(); };
-        window.closeModal = () => { 
-            modal.classList.add('hidden'); 
-        };
+        window.closeModal = () => { document.getElementById('modal').classList.add('hidden'); };
         window.openFolder = (id) => { state.currentFolderId = id; state.view = 'folderDetail'; updateUI(); };
+        
         window.generate = async () => { 
             state.loading = true; updateUI(); 
             try { 
@@ -502,13 +549,12 @@
                 state.quiz.currentIdx++; state.quiz.answered = false; state.quiz.selectedIdx = null; updateUI();
             } else {
                 state.quiz.active = false; updateUI();
-                modalBody.innerHTML = `<div class="view-content flex flex-col items-center py-4 text-center"><div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-8"><i class="fas fa-trophy text-3xl text-toss-blue"></i></div><h2 class="text-3xl font-black mb-2">퀴즈 결과</h2><p class="text-gray-400 font-bold mb-10 leading-relaxed">${state.quiz.questions.length}문제 중 ${state.quiz.score}문제를 맞혔습니다!</p><button onclick="window.closeModal()" class="w-full py-5 bg-toss-blue text-white rounded-[24px] font-black">확인</button></div>`;
+                modalBody.innerHTML = `<div class="view-content flex flex-col items-center py-6 text-center text-left"><div class="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mb-8 shadow-inner"><i class="fas fa-trophy text-4xl text-toss-blue"></i></div><h2 class="text-3xl font-black mb-3 tracking-tight">퀴즈 종료</h2><p class="text-gray-400 font-bold mb-10 leading-relaxed text-center">${state.quiz.questions.length}문제 중 ${state.quiz.score}문제를 <br> 맞혔습니다! 대단해요!</p><button onclick="window.closeModal()" class="w-full py-5 bg-toss-blue text-white rounded-[32px] font-black shadow-lg shadow-blue-50 transition-all active:scale-95">확인</button></div>`;
                 modal.classList.remove('hidden');
             }
         };
 
         updateUI();
-        window.closeModal = () => { modal.classList.add('hidden'); };
     </script>
 </body>
 </html>
