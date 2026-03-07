@@ -17,34 +17,40 @@ export default async function handler(req, res) {
   let systemPrompt, userPrompt, responseSchema;
 
   const itemSchemaProperties = {
-    kanji: { type: "STRING" },
-    kana: { type: "STRING" },
-    korean_meaning: { type: "STRING" },
-    part_of_speech: { type: "STRING" },
+    kanji: { type: "STRING", description: "단어의 한자 표기 (한자가 없는 경우 가나 표기)" },
+    kana: { type: "STRING", description: "단어의 히라가나 읽기" },
+    korean_meaning: { type: "STRING", description: "한국어 뜻" },
+    part_of_speech: { type: "STRING", description: "품사" },
     examples: { 
       type: "ARRAY", 
       items: { 
         type: "OBJECT", 
         properties: { jp: { type: "STRING" }, kr: { type: "STRING" } },
         required: ["jp", "kr"]
-      } 
+      },
+      minItems: 2,
+      description: "단어의 실제 사용 예문 (일본어와 한국어 번역)"
     },
     humble: { 
       type: "OBJECT", 
       nullable: true, 
       properties: { jp: { type: "STRING" }, kr: { type: "STRING" }, note: { type: "STRING" } } 
     },
-    synonyms: { type: "ARRAY", items: { type: "STRING" } },
-    antonyms: { type: "ARRAY", items: { type: "STRING" } }
+    synonyms: { type: "ARRAY", items: { type: "STRING" }, description: "유의어 목록 (한자(히라가나) 형식)" },
+    antonyms: { type: "ARRAY", items: { type: "STRING" }, description: "반의어 목록 (한자(히라가나) 형식)" }
   };
 
   if (isDictMode) {
-    systemPrompt = "Professional Japanese-Korean dictionary. Accuracy is paramount. Format as Kanji(Hiragana). Provide 3-5 synonyms and antonyms.";
-    userPrompt = `Search dictionary for: ${query}`;
-    responseSchema = { type: "OBJECT", properties: itemSchemaProperties, required: ["kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms"] };
+    systemPrompt = "전문적인 일한 사전입니다. 정확성이 가장 중요합니다. 유의어와 반의어를 3~5개 제공하세요. 반드시 각 단어에 대한 실용적인 예문을 2개 이상 포함해야 합니다. 모든 일본어 텍스트는 '한자(히라가나)' 형식을 지켜주세요.";
+    userPrompt = `다음 단어를 사전에서 검색해 주세요: ${query}`;
+    responseSchema = { 
+      type: "OBJECT", 
+      properties: itemSchemaProperties, 
+      required: ["kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms"] 
+    };
   } else if (isQuizMode) {
-    systemPrompt = `JLPT exam creator for N${level}. Create 10 multiple-choice questions. Distractors should be plausible.`;
-    userPrompt = `Generate 10 quiz questions for JLPT N${level || 2}.`;
+    systemPrompt = `JLPT N${level} 단어 퀴즈 출제자입니다. 10개의 4지선다 문제를 만드세요. 오답은 정답과 혼동될 만한 단어로 구성하세요.`;
+    userPrompt = `JLPT N${level || 2} 수준의 10개 퀴즈를 생성하세요.`;
     responseSchema = {
       type: "OBJECT",
       properties: {
@@ -66,9 +72,16 @@ export default async function handler(req, res) {
       required: ["questions"]
     };
   } else {
-    systemPrompt = `Professional Japanese tutor. Generate 20 diverse JLPT N${level} words. Format as Kanji(Hiragana). High randomness required.`;
-    userPrompt = `Generate 20 random words for JLPT N${level || 2}.`;
-    responseSchema = { type: "ARRAY", items: { type: "OBJECT", properties: itemSchemaProperties, required: ["kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms"] } };
+    systemPrompt = `일본어 선생님입니다. JLPT N${level} 수준의 단어 20개를 생성하세요. 한자(히라가나) 형식을 지키고, 다양한 단어를 섞어주세요. 각 단어마다 예문을 2개씩 포함하세요.`;
+    userPrompt = `JLPT N${level || 2} 수준의 랜덤 단어 20개를 생성하세요.`;
+    responseSchema = { 
+      type: "ARRAY", 
+      items: { 
+        type: "OBJECT", 
+        properties: itemSchemaProperties, 
+        required: ["kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms"] 
+      } 
+    };
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
@@ -91,7 +104,10 @@ export default async function handler(req, res) {
       }
 
       const result = await response.json();
-      return JSON.parse(result.candidates[0].content.parts[0].text);
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error("Empty AI response");
+      
+      return JSON.parse(text);
     } catch (err) {
       if (retries > 0) {
         await new Promise(r => setTimeout(r, Math.pow(2, 6 - retries) * 1000));
