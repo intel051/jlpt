@@ -90,7 +90,7 @@
 
         <nav class="fixed bottom-8 w-[calc(100%-48px)] max-w-[384px] left-1/2 -translate-x-1/2 glass-panel border border-white/50 rounded-[38px] px-8 py-4 flex justify-around items-center shadow-2xl safe-area-bottom z-40">
             <button onclick="window.nav('generator')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-generator">
-                <i class="fas fa-sparkles text-xl"></i>
+                <i class="fas fa-wand-magic-sparkles text-xl"></i>
                 <span class="text-[10px] font-black">생성</span>
             </button>
             <button onclick="window.nav('folders')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-folders">
@@ -163,9 +163,9 @@
                         ${[1,2,3,4].map(n => `<button onclick="window.setLevel(${n})" class="flex-1 py-4 rounded-[24px] font-black text-sm transition-all border-2 ${state.level === n ? 'bg-white border-toss-blue text-toss-blue shadow-lg' : 'bg-white text-gray-300 border-gray-100'}">N${n}</button>`).join('')}
                     </div>
                     <button onclick="window.generate()" class="w-full py-5 bg-toss-blue text-white rounded-[28px] font-black text-[17px] shadow-xl shadow-blue-100 btn-press mb-10 transition-all">새로운 단어 가져오기</button>
-                    <div class="space-y-4">
+                    <div class="space-y-4 text-left">
                         ${state.words.map((w, i) => `
-                            <div onclick="window.openDetail(${i}, 'gen')" class="p-7 rounded-[40px] ${colors[state.level]} border border-white flex justify-between items-center shadow-sm btn-press cursor-pointer group text-left">
+                            <div onclick="window.openDetail(${i}, 'gen')" class="p-7 rounded-[40px] ${colors[state.level]} border border-white flex justify-between items-center shadow-sm btn-press cursor-pointer group">
                                 <div><div class="flex items-center gap-2 mb-1.5"><span class="text-[22px] font-black text-toss-text">${w.kanji}</span><span class="text-[11px] font-black px-2.5 py-0.5 bg-white/60 rounded-full text-gray-500">${w.kana}</span></div><p class="text-[15px] text-gray-600 font-bold">${w.korean_meaning}</p></div>
                                 <div class="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center text-gray-400 group-hover:bg-white shadow-sm transition-all"><i class="fas fa-chevron-right text-xs"></i></div>
                             </div>
@@ -202,7 +202,7 @@
                     <div class="space-y-4">
                         ${folder.words.map((w, i) => `
                             <div onclick="window.openDetail(${i}, 'folder')" class="p-7 rounded-[40px] bg-white border border-gray-100 flex justify-between items-center shadow-sm btn-press cursor-pointer text-left">
-                                <div><div class="flex items-center gap-2 mb-1.5"><span class="text-[18px] font-black text-toss-text">${w.kanji}</span><span class="text-[11px] text-toss-blue font-black">${w.kana}</span></div><p class="text-[15px] text-gray-500 font-bold">${w.korean_meaning}</p></div>
+                                <div><div class="flex items-center gap-2 mb-1.5 text-left"><span class="text-[18px] font-black text-toss-text">${w.kanji}</span><span class="text-[11px] text-toss-blue font-black">${w.kana}</span></div><p class="text-[15px] text-gray-500 font-bold">${w.korean_meaning}</p></div>
                                 <div class="text-gray-200"><i class="fas fa-chevron-right text-xs"></i></div>
                             </div>
                         `).join('')}
@@ -308,7 +308,7 @@
                     </div>
 
                     <div class="grid grid-cols-1 gap-4">
-                        <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm">
+                        <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left">
                             <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> 유의어</h4>
                             <div class="grid grid-cols-2 gap-2.5">
                                 ${word.synonyms?.map(s => {
@@ -322,7 +322,7 @@
                                 }).join('') || '<span class="text-gray-300 text-xs font-bold">데이터 없음</span>'}
                             </div>
                         </div>
-                        <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm">
+                        <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left">
                             <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> 반의어</h4>
                             <div class="grid grid-cols-2 gap-2.5">
                                 ${word.antonyms?.map(a => {
@@ -341,7 +341,7 @@
                     <div class="toss-card p-9">
                         <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-8 opacity-60">Contextual Examples</h4>
                         <div class="space-y-5">
-                            ${word.examples.map(ex => `<div class="p-7 rounded-[40px] bg-gray-50/80 border border-white hover:bg-white transition-all shadow-sm"><p class="text-[17px] font-bold mb-2.5 text-toss-text leading-snug tracking-tight">${ex.jp}</p><p class="text-gray-400 text-sm font-bold tracking-tight">${ex.kr}</p></div>`).join('')}
+                            ${word.examples.map(ex => `<div class="p-7 rounded-[40px] bg-gray-50/80 border border-white hover:bg-white transition-all shadow-sm text-left"><p class="text-[17px] font-bold mb-2.5 text-toss-text leading-snug tracking-tight">${ex.jp}</p><p class="text-gray-400 text-sm font-bold tracking-tight">${ex.kr}</p></div>`).join('')}
                         </div>
                     </div>
                 </div>
