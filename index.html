@@ -54,22 +54,22 @@
         }
 
         .chip-base {
-            @apply px-3.5 py-2 rounded-2xl text-[12px] font-bold cursor-pointer transition-all duration-300 border border-white/50 backdrop-blur-md;
+            @apply px-3.5 py-2 rounded-2xl text-[12px] font-bold cursor-pointer transition-all duration-300 backdrop-blur-md border;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
         }
 
-        /* Synonym Style: Deep Blue Gradient Bloom */
+        /* Synonym Style: Deep Blue Gradient Bloom with Border */
         .chip-synonym {
-            @apply bg-gradient-to-br from-blue-50/80 to-indigo-50/80 text-blue-600;
+            @apply bg-gradient-to-br from-blue-50/80 to-indigo-50/80 text-blue-600 border-blue-100;
         }
         .chip-synonym:hover {
             @apply bg-blue-500 text-white border-blue-400 scale-[1.08] -translate-y-1;
             box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
         }
 
-        /* Antonym Style: Soft Rose Gradient Bloom */
+        /* Antonym Style: Soft Rose Gradient Bloom with Border */
         .chip-antonym {
-            @apply bg-gradient-to-br from-rose-50/80 to-pink-50/80 text-rose-500;
+            @apply bg-gradient-to-br from-rose-50/80 to-pink-50/80 text-rose-500 border-rose-100;
         }
         .chip-antonym:hover {
             @apply bg-rose-500 text-white border-rose-400 scale-[1.08] -translate-y-1;
@@ -145,7 +145,7 @@
         </nav>
         
         <!-- Toast Notification -->
-        <div id="toast" class="fixed top-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-gray-900/90 text-white text-[13px] font-bold rounded-2xl shadow-xl z-[70] opacity-0 transition-all duration-300 pointer-events-none"></div>
+        <div id="toast" class="fixed top-12 left-1/2 -translate-x-1/2 px-5 py-3 bg-gray-900/90 text-white text-[13px] font-bold rounded-2xl shadow-xl z-[70] opacity-0 transition-all duration-300 pointer-events-none"></div>
     </div>
 
     <script type="module">
@@ -426,20 +426,20 @@
                     <div class="space-y-3">
                         ${word.examples.map(ex => `
                             <div class="p-5 rounded-[32px] bg-gray-50/80 border border-white shadow-sm">
-                                <p class="text-[15px] font-bold text-toss-text mb-1 leading-snug jp-text">${ex.jp}</p>
-                                <p class="text-[13px] text-gray-400 font-bold">${ex.kr}</p>
+                                <p class="text-[15px] font-bold text-toss-text mb-1 leading-snug jp-text text-left">${ex.jp}</p>
+                                <p class="text-[13px] text-gray-400 font-bold text-left">${ex.kr}</p>
                             </div>`).join('')}
                     </div>
                 </div>` : ''}
 
                 <div class="grid grid-cols-1 gap-4 mb-10 text-left">
-                    <div class="chip-group-container">
+                    <div class="chip-group-container text-left">
                         <p class="text-[10px] font-black text-blue-600/40 mb-4 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400/50"></span> Synonyms</p>
                         <div class="flex flex-wrap gap-2 text-left">
                             ${(word.synonyms || []).map(s => `<span onclick="window.searchInDict('${s.split('(')[0]}')" class="chip-base chip-synonym">${s}</span>`).join('') || '-'}
                         </div>
                     </div>
-                    <div class="chip-group-container">
+                    <div class="chip-group-container text-left">
                         <p class="text-[10px] font-black text-rose-600/40 mb-4 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400/50"></span> Antonyms</p>
                         <div class="flex flex-wrap gap-2 text-left">
                             ${(word.antonyms || []).map(a => `<span onclick="window.searchInDict('${a.split('(')[0]}')" class="chip-base chip-antonym">${a}</span>`).join('') || '-'}
