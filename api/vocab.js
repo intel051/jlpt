@@ -12,34 +12,34 @@ export default async function handler(req, res) {
 
   const isDictMode = !!query;
 
-  // 1. 시스템 프롬프트 설정 (유의어/반의어 형식 및 다양성 강화)
+  // 1. 시스템 프롬프트 설정 (정확도 검증 및 형식 지정)
   const systemPrompt = isDictMode 
     ? `You are a professional Japanese-Korean dictionary based on Gemini. 
        Rules:
        1. Response must be ONLY valid JSON object.
-       2. Format Japanese text in 'word', 'synonyms', and 'antonyms' as "Kanji(Hiragana)".
-       3. Accuracy is paramount. Verify all readings and meanings twice.
-       4. Provide 3-5 synonyms and antonyms if available.
-       5. Provide max 2 high-quality examples.
+       2. Use keys: "kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms", "humble".
+       3. Format Japanese words in 'synonyms' and 'antonyms' as "Kanji(Hiragana)".
+       4. Accuracy is paramount. Verify all readings and meanings twice to prevent hallucinations.
+       5. Provide 3-5 synonyms and antonyms.
        6. Keep meaning and notes in Korean.`
     : `You are a professional Japanese tutor. 
        Generate exactly 20 diverse and random high-frequency JLPT N${level || 2} vocabulary words. 
        Rules:
        1. Response must be ONLY valid JSON array of objects.
-       2. Format Japanese text in 'word', 'synonyms', and 'antonyms' as "Kanji(Hiragana)".
-       3. Accuracy is paramount. 
+       2. Use keys: "kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms", "part_of_speech".
+       3. Format Japanese words in 'synonyms' and 'antonyms' as "Kanji(Hiragana)".
        4. Provide 2-3 synonyms and antonyms per word in "Kanji(Hiragana)" format.
        5. Provide 2 high-quality examples per word.
-       6. Ensure high randomness.`;
+       6. Ensure high randomness to avoid repetition of common words.`;
 
-  // 2. 구조화된 데이터 스키마 정의
+  // 2. 구조화된 데이터 스키마 정의 (HTML과 일관성 유지)
   const itemSchema = {
     type: "OBJECT",
     properties: {
-      kanji: { type: "STRING", description: "The Japanese word (Kanji if available, otherwise Kana)" },
-      kana: { type: "STRING", description: "The reading in Hiragana or Katakana" },
-      korean_meaning: { type: "STRING", description: "Detailed meaning in Korean" },
-      part_of_speech: { type: "STRING", description: "Noun, Verb, Adjective, etc." },
+      kanji: { type: "STRING", description: "The word in Kanji(Hiragana) or just Kana" },
+      kana: { type: "STRING", description: "Reading in Hiragana" },
+      korean_meaning: { type: "STRING", description: "Meaning in Korean" },
+      part_of_speech: { type: "STRING" },
       examples: { 
         type: "ARRAY", 
         items: { 
@@ -53,16 +53,16 @@ export default async function handler(req, res) {
         nullable: true,
         properties: { jp: { type: "STRING" }, kr: { type: "STRING" }, note: { type: "STRING" } } 
       },
-      synonyms: { type: "ARRAY", items: { type: "STRING" }, description: "List of synonyms in Kanji(Hiragana) format" },
-      antonyms: { type: "ARRAY", items: { type: "STRING" }, description: "List of antonyms in Kanji(Hiragana) format" }
+      synonyms: { type: "ARRAY", items: { type: "STRING" }, description: "Array of words in Kanji(Hiragana) format" },
+      antonyms: { type: "ARRAY", items: { type: "STRING" }, description: "Array of words in Kanji(Hiragana) format" }
     },
     required: ["kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms"]
   };
 
-  // 3. 실행 환경 설정
-  const finalSchema = isDictMode ? { ...itemSchema, properties: { ...itemSchema.properties, word: { type: "STRING" }, reading: { type: "STRING" }, meaning: { type: "STRING" } } } : { type: "ARRAY", items: itemSchema };
   const userPrompt = isDictMode ? `Search dictionary for: ${query}` : `Generate 20 random words for JLPT N${level || 2}`;
+  const finalSchema = isDictMode ? itemSchema : { type: "ARRAY", items: itemSchema };
   
+  // 현재 가장 안정적인 gemini-2.0-flash 모델 사용
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
 
   let retryCount = 0;
@@ -84,9 +84,7 @@ export default async function handler(req, res) {
       });
 
       if (!response.ok) {
-        if (response.status === 429 && retryCount < maxRetries) {
-          throw new Error('RATE_LIMIT');
-        }
+        if (response.status === 429 && retryCount < maxRetries) throw new Error('RATE_LIMIT');
         throw new Error(`Status: ${response.status}`);
       }
 
@@ -112,6 +110,6 @@ export default async function handler(req, res) {
     res.status(200).json(data);
   } catch (error) {
     console.error("API Error:", error.message);
-    res.status(500).json({ error: 'Failed to fetch dictionary or vocab data' });
+    res.status(500).json({ error: 'Failed to fetch data' });
   }
 }
