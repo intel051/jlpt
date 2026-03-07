@@ -33,27 +33,27 @@
         .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.5); }
         .toss-card { background: #ffffff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); border: 1px solid rgba(0,0,0,0.04); }
         
-        /* Premium Button-style Chip (Transparent Background) */
+        /* Premium Button-style Chip (Transparent & Clean) */
         .premium-chip {
-            @apply flex flex-row items-baseline gap-1 px-4 py-2 rounded-[16px] transition-all duration-300 active:scale-95 text-left border;
-            background: transparent;
+            @apply flex flex-row items-center gap-1.5 px-4 py-2 rounded-[14px] transition-all duration-300 active:scale-95 text-left border;
+            background: rgba(255, 255, 255, 0.3); /* 흰 상자 느낌 제거 */
         }
 
         .synonym-btn { 
-            @apply border-blue-200 text-blue-600; 
+            @apply border-blue-100 text-blue-600; 
         }
         .synonym-btn:hover { 
-            @apply border-toss-blue bg-blue-50/50 -translate-y-0.5;
+            @apply border-toss-blue bg-blue-50 -translate-y-0.5 shadow-sm;
         }
 
         .antonym-btn { 
-            @apply border-rose-200 text-rose-500; 
+            @apply border-rose-100 text-rose-500; 
         }
         .antonym-btn:hover { 
-            @apply border-rose-400 bg-rose-50/50 -translate-y-0.5;
+            @apply border-rose-400 bg-rose-50 -translate-y-0.5 shadow-sm;
         }
 
-        .premium-chip .reading { @apply text-[11px] font-medium opacity-60; }
+        .premium-chip .reading { @apply text-[11px] font-medium opacity-50; }
         .premium-chip .kanji { @apply text-[14px] font-bold; }
 
         .modal-overlay { background: rgba(0, 0, 0, 0.15); backdrop-filter: blur(20px); animation: fadeIn 0.3s; }
@@ -170,7 +170,7 @@
                         ${[1,2,3,4].map(n => `<button onclick="window.setLevel(${n})" class="flex-1 py-4 rounded-[24px] font-black text-sm transition-all border-2 ${state.level === n ? 'bg-white border-toss-blue text-toss-blue shadow-lg' : 'bg-white text-gray-300 border-gray-100'}">N${n}</button>`).join('')}
                     </div>
                     <button onclick="window.generate()" class="w-full py-5 bg-toss-blue text-white rounded-[28px] font-black text-[17px] shadow-xl shadow-blue-100 btn-press mb-10 transition-all">새로운 단어 가져오기</button>
-                    <div class="space-y-4">
+                    <div class="space-y-4 text-left">
                         ${state.words.map((w, i) => `
                             <div onclick="window.openDetail(${i}, 'gen')" class="p-7 rounded-[40px] ${colors[state.level]} border border-white flex justify-between items-center shadow-sm btn-press cursor-pointer group">
                                 <div class="text-left"><div class="flex items-center gap-2 mb-1.5"><span class="text-[22px] font-black text-toss-text text-left">${w.kanji}</span><span class="text-[11px] font-black px-2.5 py-0.5 bg-white/60 rounded-full text-gray-500 text-left">${w.kana}</span></div><p class="text-[15px] text-gray-600 font-bold text-left text-left">${w.korean_meaning}</p></div>
@@ -248,8 +248,8 @@
                         <div class="w-full h-1.5 bg-gray-100 rounded-full mb-10 overflow-hidden"><div class="h-full bg-toss-blue transition-all duration-500 text-left" style="width: ${progress}%"></div></div>
                         <div class="toss-card p-12 text-center mb-10 bg-gradient-to-br from-white to-gray-50/30">
                             <span class="text-[12px] font-black text-toss-blue uppercase tracking-widest opacity-40 mb-4 block text-left">Question ${state.quiz.currentIdx + 1}</span>
-                            <h2 class="text-5xl font-black tracking-tighter mb-4 text-left">${q.word || q.question_word}</h2>
-                            <p class="text-lg font-bold text-gray-300 tracking-wider text-left text-left">${q.reading || ''}</p>
+                            <h2 class="text-5xl font-black tracking-tighter mb-4 text-left text-center">${q.word || q.question_word}</h2>
+                            <p class="text-lg font-bold text-gray-300 tracking-wider text-center">${q.reading || ''}</p>
                         </div>
                         <div class="grid grid-cols-1 gap-3 text-left">
                             ${q.options.map((opt, idx) => {
@@ -267,7 +267,7 @@
                             <p class="text-[13px] text-gray-400 font-bold mb-1 uppercase tracking-widest text-left">해설</p>
                             <p class="text-sm font-bold text-gray-600 leading-relaxed text-left text-left">${q.explanation || '정답입니다!'}</p>
                         </div>
-                        <button onclick="window.nextQuestion()" class="w-full mt-10 py-5 bg-toss-blue text-white rounded-[28px] font-black shadow-xl btn-press view-content text-left">다음 문제</button>` : ''}
+                        <button onclick="window.nextQuestion()" class="w-full mt-10 py-5 bg-toss-blue text-white rounded-[28px] font-black shadow-xl btn-press view-content text-left text-center">다음 문제</button>` : ''}
                     </div>
                 `;
             }
@@ -277,7 +277,7 @@
             document.getElementById('header-title').textContent = '모찌 사전';
             main.innerHTML = `
                 <div class="view-content pt-12 flex flex-col space-y-10 text-center">
-                    <div class="space-y-4"><div class="w-24 h-24 bg-white toss-card flex items-center justify-center mx-auto text-5xl shadow-sm">🍡</div><h2 class="text-4xl font-black tracking-tight text-toss-text text-left text-left">모찌 사전</h2></div>
+                    <div class="space-y-4"><div class="w-24 h-24 bg-white toss-card flex items-center justify-center mx-auto text-5xl shadow-sm">🍡</div><h2 class="text-4xl font-black tracking-tight text-toss-text text-center">모찌 사전</h2></div>
                     <div class="relative text-left">
                         <input type="text" id="dictInput" value="${state.dictSearch}" placeholder="단어를 입력하세요" class="w-full bg-white toss-card py-5 px-14 text-lg outline-none border-none shadow-xl focus:ring-4 focus:ring-toss-blue/5 transition-all text-left">
                         <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-toss-blue opacity-50 text-left text-left"></i>
@@ -308,47 +308,47 @@
             if(!container) return;
             container.innerHTML = `
                 <div class="space-y-6 view-content text-left">
-                    <div class="toss-card p-14 text-center relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50 border border-black/[0.03]">
-                        <span class="px-5 py-1.5 bg-gray-50 text-toss-blue rounded-full text-[12px] font-black mb-7 tracking-widest inline-block border border-black/[0.03] text-left text-left">${word.kana}</span>
-                        <h2 class="text-6xl font-black mb-6 tracking-tighter text-toss-text text-left text-left text-left">${word.kanji}</h2>
-                        <p class="text-2xl text-gray-500 font-bold tracking-tight text-center text-left text-left text-left">${word.korean_meaning}</p>
+                    <div class="toss-card p-14 text-center relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50 border border-black/[0.03] flex flex-col items-center justify-center">
+                        <span class="px-5 py-1.5 bg-gray-50 text-toss-blue rounded-full text-[12px] font-black mb-7 tracking-widest inline-block border border-black/[0.03]">${word.kana}</span>
+                        <h2 class="text-6xl font-black mb-6 tracking-tighter text-toss-text">${word.kanji}</h2>
+                        <p class="text-2xl text-gray-500 font-bold tracking-tight">${word.korean_meaning}</p>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 text-left text-left">
-                        <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left text-left">
-                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2 text-left"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-sm text-left"></span> 유의어</h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left text-left text-left text-left text-left">
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left">
+                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-sm"></span> 유의어</h4>
+                            <div class="flex flex-wrap gap-2.5">
                                 ${word.synonyms?.map(s => {
                                     const kanji = typeof s === 'string' ? s.split('(')[0] : s.kanji;
                                     const kana = typeof s === 'string' ? (s.includes('(') ? s.split('(')[1].replace(')', '') : '') : s.kana;
                                     return `
-                                        <button onclick="window.searchInDict('${kanji}')" class="premium-chip synonym-btn group text-left">
-                                            <span class="kanji text-left">${kanji}</span>
-                                            ${kana ? `<span class="reading text-left">(${kana})</span>` : ''}
+                                        <button onclick="window.searchInDict('${kanji}')" class="premium-chip synonym-btn group">
+                                            <span class="kanji">${kanji}</span>
+                                            ${kana ? `<span class="reading">(${kana})</span>` : ''}
                                         </button>`;
-                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1 text-left text-left">데이터 없음</span>'}
+                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1">데이터 없음</span>'}
                             </div>
                         </div>
-                        <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left text-left">
-                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2 text-left"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-sm text-left"></span> 반의어</h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left text-left text-left text-left text-left">
+                        <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left">
+                            <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-sm"></span> 반의어</h4>
+                            <div class="flex flex-wrap gap-2.5">
                                 ${word.antonyms?.map(a => {
                                     const kanji = typeof a === 'string' ? a.split('(')[0] : a.kanji;
                                     const kana = typeof a === 'string' ? (a.includes('(') ? a.split('(')[1].replace(')', '') : '') : a.kana;
                                     return `
-                                        <button onclick="window.searchInDict('${kanji}')" class="premium-chip antonym-btn group text-left">
-                                            <span class="kanji text-left text-left">${kanji}</span>
-                                            ${kana ? `<span class="reading text-left text-left text-left">(${kana})</span>` : ''}
+                                        <button onclick="window.searchInDict('${kanji}')" class="premium-chip antonym-btn group">
+                                            <span class="kanji">${kanji}</span>
+                                            ${kana ? `<span class="reading">(${kana})</span>` : ''}
                                         </button>`;
-                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1 text-left text-left text-left text-left">데이터 없음</span>'}
+                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1">데이터 없음</span>'}
                             </div>
                         </div>
                     </div>
 
-                    <div class="toss-card p-9 text-left text-left text-left">
-                        <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-8 opacity-60 text-left text-left text-left">Contextual Examples</h4>
-                        <div class="space-y-5 text-left text-left">
-                            ${word.examples.map(ex => `<div class="p-7 rounded-[40px] bg-gray-50/80 border border-white hover:bg-white transition-all shadow-sm text-left text-left text-left"><p class="text-[17px] font-bold mb-2.5 text-toss-text leading-snug tracking-tight text-left text-left text-left">${ex.jp}</p><p class="text-gray-400 text-sm font-bold tracking-tight text-left text-left text-left">${ex.kr}</p></div>`).join('')}
+                    <div class="toss-card p-9 text-left">
+                        <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-8 opacity-60">Contextual Examples</h4>
+                        <div class="space-y-5 text-left">
+                            ${word.examples.map(ex => `<div class="p-7 rounded-[40px] bg-gray-50/80 border border-white hover:bg-white transition-all shadow-sm text-left"><p class="text-[17px] font-bold mb-2.5 text-toss-text leading-snug tracking-tight text-left">${ex.jp}</p><p class="text-gray-400 text-sm font-bold tracking-tight text-left">${ex.kr}</p></div>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -359,37 +359,37 @@
             const word = type === 'gen' ? state.words[index] : state.folders.find(f => f.id === state.currentFolderId).words[index];
             const isSaved = state.folders.some(f => f.words.some(w => w.kanji === word.kanji));
             modalBody.innerHTML = `
-                <div class="flex flex-col items-center text-center mb-10 view-content text-left text-left">
-                    <span class="text-[11px] font-black text-toss-blue px-4 py-1.5 bg-blue-50 rounded-full mb-6 uppercase tracking-widest border border-blue-100 text-left text-left text-left">${word.part_of_speech || 'JLPT N' + state.level}</span>
+                <div class="flex flex-col items-center text-center mb-10 view-content">
+                    <span class="text-[11px] font-black text-toss-blue px-4 py-1.5 bg-blue-50 rounded-full mb-6 uppercase tracking-widest border border-blue-100">${word.part_of_speech || 'JLPT N' + state.level}</span>
                     <h2 class="text-5xl font-black mb-4 tracking-tighter text-toss-text text-center text-left text-left text-left">${word.kanji}</h2>
                     <p class="text-[18px] font-bold text-gray-300 mb-8 tracking-wider text-center text-left text-left text-left">${word.kana}</p>
                     <p class="text-[24px] font-black text-gray-800 tracking-tight text-center text-left text-left text-left">${word.korean_meaning}</p>
                 </div>
-                <div class="grid grid-cols-1 gap-4 mb-10 text-left text-left text-left">
+                <div class="grid grid-cols-1 gap-4 mb-10 text-left">
                     <div class="p-7 rounded-[36px] bg-gray-50/50 border border-gray-100 text-left text-left text-left">
                         <p class="text-[10px] font-black text-blue-600/40 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5 text-left text-left"><span class="w-1.5 h-1.5 rounded-full bg-blue-400/50 text-left"></span> Synonyms</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left text-left text-left text-left">
+                        <div class="flex flex-wrap gap-2.5 text-left text-left text-left text-left">
                             ${(word.synonyms || []).map(s => {
                                 const kanji = typeof s === 'string' ? s.split('(')[0] : s.kanji;
                                 const kana = typeof s === 'string' ? (s.includes('(') ? s.split('(')[1].replace(')', '') : '') : s.kana;
                                 return `
-                                    <button onclick="window.searchInDict('${kanji}')" class="premium-chip synonym-btn group text-left">
-                                        <span class="kanji text-left text-left text-left">${kanji}</span>
-                                        ${kana ? `<span class="reading text-left text-left text-left">(${kana})</span>` : ''}
+                                    <button onclick="window.searchInDict('${kanji}')" class="premium-chip synonym-btn group">
+                                        <span class="kanji">${kanji}</span>
+                                        ${kana ? `<span class="reading">(${kana})</span>` : ''}
                                     </button>`;
                             }).join('') || '-'}
                         </div>
                     </div>
                     <div class="p-7 rounded-[36px] bg-gray-50/50 border border-gray-100 text-left text-left text-left">
-                        <p class="text-[10px] font-black text-rose-600/40 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5 text-left text-left text-left text-left"><span class="w-1.5 h-1.5 rounded-full bg-rose-400/50 text-left text-left"></span> Antonyms</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left text-left text-left text-left text-left text-left text-left text-left">
+                        <p class="text-[10px] font-black text-rose-600/40 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5 text-left text-left text-left text-left text-left text-left"><span class="w-1.5 h-1.5 rounded-full bg-rose-400/50 text-left text-left text-left text-left text-left text-left text-left text-left"></span> Antonyms</p>
+                        <div class="flex flex-wrap gap-2.5 text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">
                             ${(word.antonyms || []).map(a => {
                                 const kanji = typeof a === 'string' ? a.split('(')[0] : a.kanji;
                                 const kana = typeof a === 'string' ? (a.includes('(') ? a.split('(')[1].replace(')', '') : '') : a.kana;
                                 return `
-                                    <button onclick="window.searchInDict('${kanji}')" class="premium-chip antonym-btn group text-left">
-                                        <span class="kanji text-left text-left text-left text-left">${kanji}</span>
-                                        ${kana ? `<span class="reading text-left text-left text-left text-left">(${kana})</span>` : ''}
+                                    <button onclick="window.searchInDict('${kanji}')" class="premium-chip antonym-btn group">
+                                        <span class="kanji">${kanji}</span>
+                                        ${kana ? `<span class="reading">(${kana})</span>` : ''}
                                     </button>`;
                             }).join('') || '-'}
                         </div>
@@ -398,9 +398,9 @@
                 <div class="flex flex-col gap-3.5 text-left text-left text-left">
                     <div class="flex gap-3 h-14 text-left">
                         <select id="folder-select" class="flex-1 px-6 bg-black/[0.04] rounded-[28px] font-black text-[13px] outline-none appearance-none cursor-pointer text-gray-600 text-left text-left">${state.folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}</select>
-                        <button onclick="window.saveToFolder('${encodeURIComponent(JSON.stringify(word))}')" class="flex-[1.6] bg-toss-blue text-white rounded-[28px] font-black text-sm shadow-xl shadow-blue-100 btn-press text-left text-left text-left text-left">${isSaved ? '다른 폴더 추가' : '단어장 저장'}</button>
+                        <button onclick="window.saveToFolder('${encodeURIComponent(JSON.stringify(word))}')" class="flex-[1.6] bg-toss-blue text-white rounded-[28px] font-black text-sm shadow-xl shadow-blue-100 btn-press text-left text-left text-left text-left text-center">${isSaved ? '다른 폴더 추가' : '단어장 저장'}</button>
                     </div>
-                    <button onclick="window.searchInDict('${word.kanji}')" class="w-full h-14 bg-gray-50 hover:bg-gray-100 text-toss-muted rounded-[28px] font-black text-[12px] btn-press border border-gray-100 transition-colors uppercase tracking-widest text-left text-left text-left text-left text-left text-center text-left text-left"><i class="fas fa-search mr-2 text-left"></i>Analyze in Dict</button>
+                    <button onclick="window.searchInDict('${word.kanji}')" class="w-full h-14 bg-gray-50 hover:bg-gray-100 text-toss-muted rounded-[28px] font-black text-[12px] btn-press border border-gray-100 transition-colors uppercase tracking-widest text-left text-left text-left text-left text-left text-center text-left text-left text-center"><i class="fas fa-search mr-2 text-left"></i>Analyze in Dict</button>
                 </div>
             `;
             modal.classList.remove('hidden');
