@@ -15,7 +15,6 @@
                         'toss-blue': '#3182F6',
                         'toss-text': '#191F28',
                         'toss-muted': '#8B95A1',
-                        'glass-bg': 'rgba(255, 255, 255, 0.85)',
                     }
                 },
             },
@@ -30,20 +29,30 @@
         .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.5); }
         .toss-card { background: #ffffff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); border: 1px solid rgba(0,0,0,0.04); }
         
-        /* Modern Rectangle Border Chip Style */
-        .chip-modern {
-            @apply px-4 py-2.5 rounded-2xl text-[13px] font-bold cursor-pointer transition-all duration-300 border flex items-center justify-center text-center;
-            background: #ffffff;
+        /* Premium Button-style Chip */
+        .premium-chip {
+            @apply flex items-center gap-1.5 px-4 py-2.5 rounded-[18px] border transition-all duration-300 active:scale-95 text-left;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(8px);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
         }
 
-        .chip-synonym { @apply border-blue-100 text-blue-600; }
-        .chip-synonym:hover { @apply border-toss-blue bg-blue-50/30 -translate-y-0.5; box-shadow: 0 8px 16px rgba(49, 130, 246, 0.08); }
+        .synonym-btn { @apply border-blue-100 text-blue-600; }
+        .synonym-btn:hover { 
+            @apply border-toss-blue bg-blue-500 text-white -translate-y-0.5 shadow-lg shadow-blue-200;
+        }
+        .synonym-btn:hover .reading { @apply text-white/70; }
 
-        .chip-antonym { @apply border-rose-100 text-rose-500; }
-        .chip-antonym:hover { @apply border-rose-400 bg-rose-50/30 -translate-y-0.5; box-shadow: 0 8px 16px rgba(244, 63, 94, 0.08); }
+        .antonym-btn { @apply border-rose-100 text-rose-500; }
+        .antonym-btn:hover { 
+            @apply border-rose-500 bg-rose-500 text-white -translate-y-0.5 shadow-lg shadow-rose-200;
+        }
+        .antonym-btn:hover .reading { @apply text-white/70; }
 
-        .modal-overlay { background: rgba(0, 0, 0, 0.1); backdrop-filter: blur(16px); animation: fadeIn 0.3s; }
+        .premium-chip .reading { @apply text-[11px] font-medium opacity-60 transition-colors; }
+        .premium-chip .kanji { @apply text-[14px] font-bold; }
+
+        .modal-overlay { background: rgba(0, 0, 0, 0.12); backdrop-filter: blur(16px); animation: fadeIn 0.3s; }
         .modal-glass { animation: modalEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes modalEnter { from { opacity: 0; transform: scale(0.96) translateY(30px); } to { opacity: 1; transform: scale(1) translateY(0); } }
@@ -82,7 +91,6 @@
             </div>
         </div>
 
-        <!-- Navigation Bar -->
         <nav class="fixed bottom-8 w-[calc(100%-48px)] max-w-[384px] left-1/2 -translate-x-1/2 glass-panel border border-white/50 rounded-[38px] px-8 py-4 flex justify-around items-center shadow-2xl safe-area-bottom z-40">
             <button onclick="window.nav('generator')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-generator"><i class="fas fa-sparkles text-xl"></i><span class="text-[10px] font-black">생성</span></button>
             <button onclick="window.nav('folders')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-folders"><i class="fas fa-folder-open text-xl"></i><span class="text-[10px] font-black">보관함</span></button>
@@ -169,7 +177,7 @@
                             <p class="text-[12px] text-gray-400 font-bold">${f.words.length} 단어</p>
                         </div>
                     `).join('')}
-                    <button onclick="window.createFolder()" class="p-7 rounded-[40px] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-2 btn-press transition-colors hover:border-toss-blue hover:text-toss-blue">
+                    <button onclick="window.createFolder()" class="p-7 rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 gap-2 btn-press transition-colors hover:border-toss-blue hover:text-toss-blue">
                         <i class="fas fa-plus"></i><span class="text-[11px] font-black uppercase">Add Folder</span>
                     </button>
                 </div>
@@ -239,13 +247,21 @@
                         <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm">
                             <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> 유의어</h4>
                             <div class="grid grid-cols-2 gap-2.5">
-                                ${word.synonyms?.map(s => `<span onclick="window.searchInDict('${s.split('(')[0]}')" class="chip-modern chip-synonym">${s}</span>`).join('') || '<span class="text-gray-300 text-xs">데이터 없음</span>'}
+                                ${word.synonyms?.map(s => `
+                                    <button onclick="window.searchInDict('${s.kanji}')" class="premium-chip synonym-btn">
+                                        <span class="kanji">${s.kanji}</span>
+                                        <span class="reading">(${s.kana})</span>
+                                    </button>`).join('') || '<span class="text-gray-300 text-xs font-bold">데이터 없음</span>'}
                             </div>
                         </div>
                         <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm">
                             <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> 반의어</h4>
                             <div class="grid grid-cols-2 gap-2.5">
-                                ${word.antonyms?.map(a => `<span onclick="window.searchInDict('${a.split('(')[0]}')" class="chip-modern chip-antonym">${a}</span>`).join('') || '<span class="text-gray-300 text-xs">데이터 없음</span>'}
+                                ${word.antonyms?.map(a => `
+                                    <button onclick="window.searchInDict('${a.kanji}')" class="premium-chip antonym-btn">
+                                        <span class="kanji">${a.kanji}</span>
+                                        <span class="reading">(${a.kana})</span>
+                                    </button>`).join('') || '<span class="text-gray-300 text-xs font-bold">데이터 없음</span>'}
                             </div>
                         </div>
                     </div>
@@ -271,16 +287,24 @@
                     <p class="text-[24px] font-black text-gray-800 tracking-tight">${word.korean_meaning}</p>
                 </div>
                 <div class="grid grid-cols-1 gap-4 mb-10 text-left">
-                    <div class="p-6 rounded-[36px] bg-gray-50/50 border border-gray-100">
-                        <p class="text-[10px] font-black text-blue-600/40 mb-4 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400/50"></span> Synonyms</p>
-                        <div class="grid grid-cols-2 gap-2">
-                            ${(word.synonyms || []).map(s => `<span onclick="window.searchInDict('${s.split('(')[0]}')" class="chip-modern chip-synonym text-xs">${s}</span>`).join('') || '-'}
+                    <div class="p-7 rounded-[36px] bg-gray-50/50 border border-gray-100">
+                        <p class="text-[10px] font-black text-blue-600/40 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400/50"></span> Synonyms</p>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            ${(word.synonyms || []).map(s => `
+                                <button onclick="window.searchInDict('${s.kanji}')" class="premium-chip synonym-btn">
+                                    <span class="kanji">${s.kanji}</span>
+                                    <span class="reading">(${s.kana})</span>
+                                </button>`).join('') || '-'}
                         </div>
                     </div>
-                    <div class="p-6 rounded-[36px] bg-gray-50/50 border border-gray-100">
-                        <p class="text-[10px] font-black text-rose-600/40 mb-4 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400/50"></span> Antonyms</p>
-                        <div class="grid grid-cols-2 gap-2">
-                            ${(word.antonyms || []).map(a => `<span onclick="window.searchInDict('${a.split('(')[0]}')" class="chip-modern chip-antonym text-xs">${a}</span>`).join('') || '-'}
+                    <div class="p-7 rounded-[36px] bg-gray-50/50 border border-gray-100">
+                        <p class="text-[10px] font-black text-rose-600/40 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400/50"></span> Antonyms</p>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            ${(word.antonyms || []).map(a => `
+                                <button onclick="window.searchInDict('${a.kanji}')" class="premium-chip antonym-btn">
+                                    <span class="kanji">${a.kanji}</span>
+                                    <span class="reading">(${a.kana})</span>
+                                </button>`).join('') || '-'}
                         </div>
                     </div>
                 </div>
@@ -304,9 +328,7 @@
         window.saveToFolder = (wordData) => { const word = JSON.parse(decodeURIComponent(wordData)); const folderId = document.getElementById('folder-select').value; const folder = state.folders.find(f => f.id === folderId); if (folder.words.some(w => w.kanji === word.kanji)) return showToast('이미 저장됨'); folder.words.unshift(word); localStorage.setItem('jlpt_v6_folders', JSON.stringify(state.folders)); showToast('저장 완료'); window.closeModal(); updateUI(); };
         window.searchInDict = (word) => { window.closeModal(); state.view = 'dict'; state.dictSearch = word; updateUI(); setTimeout(() => window.searchDict(word), 300); };
         
-        // Modal Closer Fixing
         document.getElementById('modal-closer').onclick = window.closeModal;
-
         updateUI();
     </script>
 </body>
