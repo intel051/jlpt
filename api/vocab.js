@@ -15,9 +15,19 @@ export default async function handler(req, res) {
 
   let systemPrompt, userPrompt, responseSchema;
 
+  // 유의어/반의어 버튼화를 위한 구조화된 객체 스키마
+  const chipSchema = {
+    type: "OBJECT",
+    properties: {
+      kanji: { type: "STRING", description: "한자 표기" },
+      kana: { type: "STRING", description: "히라가나 읽기" }
+    },
+    required: ["kanji", "kana"]
+  };
+
   const itemSchemaProperties = {
-    kanji: { type: "STRING", description: "단어의 한자 표기 (한자가 없는 경우 가나 표기)" },
-    kana: { type: "STRING", description: "단어의 히라가나 읽기" },
+    kanji: { type: "STRING", description: "단어의 한자 표기 (없으면 가나)" },
+    kana: { type: "STRING", description: "히라가나 읽기" },
     korean_meaning: { type: "STRING", description: "한국어 뜻" },
     part_of_speech: { type: "STRING", description: "품사" },
     examples: { 
@@ -34,12 +44,12 @@ export default async function handler(req, res) {
       nullable: true, 
       properties: { jp: { type: "STRING" }, kr: { type: "STRING" }, note: { type: "STRING" } } 
     },
-    synonyms: { type: "ARRAY", items: { type: "STRING" }, description: "반드시 '한자(히라가나)' 형식으로 제공" },
-    antonyms: { type: "ARRAY", items: { type: "STRING" }, description: "반드시 '한자(히라가나)' 형식으로 제공" }
+    synonyms: { type: "ARRAY", items: chipSchema, description: "유의어 객체 배열" },
+    antonyms: { type: "ARRAY", items: chipSchema, description: "반의어 객체 배열" }
   };
 
   if (isDictMode) {
-    systemPrompt = "전문 일한 사전입니다. 유의어와 반의어는 반드시 '한자(히라가나)' 형식으로 3-5개씩 제공하세요. 예문은 상황별로 2개 이상 포함하며, 정확한 한국어 번역을 제공하세요.";
+    systemPrompt = "전문 일한 사전입니다. 유의어와 반의어는 반드시 한자와 히라가나를 분리하여 객체 형태로 제공하세요. 정확도가 생명입니다.";
     userPrompt = `사전 검색: ${query}`;
     responseSchema = { 
       type: "OBJECT", 
@@ -47,7 +57,7 @@ export default async function handler(req, res) {
       required: ["kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms"] 
     };
   } else if (isQuizMode) {
-    systemPrompt = `JLPT N${level} 퀴즈 출제자입니다. 10개의 4지선다 문제를 만드세요. 해설은 간결한 토스 스타일 문체를 사용하세요.`;
+    systemPrompt = `JLPT N${level} 퀴즈 출제자입니다. 10개의 문제를 생성하세요. 해설은 깔끔한 토스 문체를 사용하세요.`;
     userPrompt = `N${level || 2} 수준 퀴즈 10개 생성`;
     responseSchema = {
       type: "OBJECT",
@@ -70,7 +80,7 @@ export default async function handler(req, res) {
       required: ["questions"]
     };
   } else {
-    systemPrompt = `JLPT N${level} 단어 생성기입니다. 20개의 랜덤 단어를 생성하세요. 유의어/반의어는 반드시 '한자(히라가나)' 형식으로 포함하세요.`;
+    systemPrompt = `JLPT N${level} 단어 생성기입니다. 20개의 랜덤 단어를 생성하세요. 유의어/반의어 데이터를 한자와 히라가나로 분리하여 객체 배열로 포함하세요.`;
     userPrompt = `N${level || 2} 단어 20개 생성`;
     responseSchema = { 
       type: "ARRAY", 
