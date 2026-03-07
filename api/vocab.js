@@ -61,8 +61,8 @@ export default async function handler(req, res) {
   const finalSchema = isDictMode ? itemSchema : { type: "ARRAY", items: itemSchema };
   const userPrompt = isDictMode ? `Search dictionary for: ${query}` : `Generate 20 random words for JLPT N${level || 2}`;
   
-  // 가장 안정적인 gemini-3.1-flash-lite 모델 사용
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
+  // 가장 안정적인 gemini-2.5flash 모델 사용
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   let retryCount = 0;
   const maxRetries = 5;
