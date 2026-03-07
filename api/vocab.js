@@ -12,24 +12,27 @@ export default async function handler(req, res) {
 
   const isDictMode = !!query;
 
-  // 1. 시스템 프롬프트 설정 (UI 키 이름과 일치하도록 수정)
+  // 1. 시스템 프롬프트 설정 (유의어/반의어 형식 및 다양성 강화)
   const systemPrompt = isDictMode 
     ? `You are a professional Japanese-Korean dictionary based on Gemini. 
        Rules:
        1. Response must be ONLY valid JSON object.
-       2. Accuracy is paramount. Verify all readings and meanings twice to prevent hallucinations.
-       3. Provide max 2 high-quality examples.
-       4. Keep meaning and notes in Korean.`
+       2. Format Japanese text in 'word', 'synonyms', and 'antonyms' as "Kanji(Hiragana)".
+       3. Accuracy is paramount. Verify all readings and meanings twice.
+       4. Provide 3-5 synonyms and antonyms if available.
+       5. Provide max 2 high-quality examples.
+       6. Keep meaning and notes in Korean.`
     : `You are a professional Japanese tutor. 
        Generate exactly 20 diverse and random high-frequency JLPT N${level || 2} vocabulary words. 
        Rules:
        1. Response must be ONLY valid JSON array of objects.
-       2. Accuracy is paramount. Verify all readings and meanings to prevent hallucinations.
-       3. Provide 2 high-quality examples per word.
-       4. Keep meaning and notes in Korean.
-       5. Ensure high randomness to avoid repetition of common words.`;
+       2. Format Japanese text in 'word', 'synonyms', and 'antonyms' as "Kanji(Hiragana)".
+       3. Accuracy is paramount. 
+       4. Provide 2-3 synonyms and antonyms per word in "Kanji(Hiragana)" format.
+       5. Provide 2 high-quality examples per word.
+       6. Ensure high randomness.`;
 
-  // 2. 구조화된 데이터 스키마 정의 (HTML 코드와 Key 이름 일치화)
+  // 2. 구조화된 데이터 스키마 정의
   const itemSchema = {
     type: "OBJECT",
     properties: {
@@ -50,26 +53,14 @@ export default async function handler(req, res) {
         nullable: true,
         properties: { jp: { type: "STRING" }, kr: { type: "STRING" }, note: { type: "STRING" } } 
       },
-      synonyms: { 
-        type: "ARRAY", 
-        items: { 
-          type: "OBJECT",
-          properties: { word: { type: "STRING" }, meaning: { type: "STRING" } }
-        } 
-      },
-      antonyms: { 
-        type: "ARRAY", 
-        items: { 
-          type: "OBJECT",
-          properties: { word: { type: "STRING" }, meaning: { type: "STRING" } }
-        } 
-      }
+      synonyms: { type: "ARRAY", items: { type: "STRING" }, description: "List of synonyms in Kanji(Hiragana) format" },
+      antonyms: { type: "ARRAY", items: { type: "STRING" }, description: "List of antonyms in Kanji(Hiragana) format" }
     },
     required: ["kanji", "kana", "korean_meaning", "examples", "synonyms", "antonyms"]
   };
 
   // 3. 실행 환경 설정
-  const finalSchema = isDictMode ? itemSchema : { type: "ARRAY", items: itemSchema };
+  const finalSchema = isDictMode ? { ...itemSchema, properties: { ...itemSchema.properties, word: { type: "STRING" }, reading: { type: "STRING" }, meaning: { type: "STRING" } } } : { type: "ARRAY", items: itemSchema };
   const userPrompt = isDictMode ? `Search dictionary for: ${query}` : `Generate 20 random words for JLPT N${level || 2}`;
   
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
