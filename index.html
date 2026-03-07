@@ -17,6 +17,8 @@
                         'toss-muted': '#8B95A1',
                         'pastel-blue-bg': '#EBF3FF',
                         'pastel-rose-bg': '#FFF0F3',
+                        'pastel-blue-border': '#D1E4FF',
+                        'pastel-rose-border': '#FFE0E6',
                     }
                 },
             },
@@ -31,39 +33,36 @@
         .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.5); }
         .toss-card { background: #ffffff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); border: 1px solid rgba(0,0,0,0.04); }
         
-        /* Modern Button-style Chip */
+        /* Premium Button-style Chip */
         .premium-chip {
-            @apply flex flex-col items-start px-5 py-3 rounded-[22px] transition-all duration-300 active:scale-95 text-left border;
-            background: #ffffff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            @apply flex flex-col items-start px-5 py-3 rounded-[24px] transition-all duration-300 active:scale-95 text-left border-2;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
         }
 
-        /* Synonym Style: Ocean Pastel */
         .synonym-btn { 
-            @apply border-blue-50 bg-gradient-to-br from-white to-blue-50/30; 
+            @apply border-pastel-blue-border bg-pastel-blue-bg; 
         }
         .synonym-btn .kanji { @apply text-blue-600; }
         .synonym-btn .reading { @apply text-blue-400; }
         .synonym-btn:hover { 
-            @apply border-toss-blue -translate-y-1 bg-white;
-            box-shadow: 0 10px 20px rgba(49, 130, 246, 0.1);
+            @apply border-toss-blue bg-white -translate-y-1;
+            box-shadow: 0 12px 24px rgba(49, 130, 246, 0.12);
         }
 
-        /* Antonym Style: Rose Pastel */
         .antonym-btn { 
-            @apply border-rose-50 bg-gradient-to-br from-white to-rose-50/30; 
+            @apply border-pastel-rose-border bg-pastel-rose-bg; 
         }
         .antonym-btn .kanji { @apply text-rose-500; }
         .antonym-btn .reading { @apply text-rose-300; }
         .antonym-btn:hover { 
-            @apply border-rose-400 -translate-y-1 bg-white;
-            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.1);
+            @apply border-rose-400 bg-white -translate-y-1;
+            box-shadow: 0 12px 24px rgba(239, 68, 68, 0.12);
         }
 
-        .premium-chip .reading { @apply text-[10px] font-bold tracking-tight mb-0.5; }
+        .premium-chip .reading { @apply text-[10px] font-bold tracking-tight mb-0.5 uppercase; }
         .premium-chip .kanji { @apply text-[15px] font-extrabold tracking-tight; }
 
-        .modal-overlay { background: rgba(0, 0, 0, 0.1); backdrop-filter: blur(16px); animation: fadeIn 0.3s; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.15); backdrop-filter: blur(20px); animation: fadeIn 0.3s; }
         .modal-glass { animation: modalEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes modalEnter { from { opacity: 0; transform: scale(0.96) translateY(30px); } to { opacity: 1; transform: scale(1) translateY(0); } }
@@ -87,13 +86,13 @@
             <div id="quiz-badge" class="hidden bg-blue-50 text-toss-blue px-4 py-1.5 rounded-full text-[11px] font-black">정답률 0%</div>
         </header>
 
-        <main id="main-content" class="flex-1 px-6 pb-40 overflow-y-auto no-scrollbar">
+        <main id="main-content" class="flex-1 px-6 pb-40 overflow-y-auto no-scrollbar text-left">
             <!-- Dynamic Views -->
         </main>
 
         <!-- Global Modal -->
         <div id="modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-6">
-            <div class="modal-overlay absolute inset-0" id="modal-closer"></div>
+            <div class="modal-overlay absolute inset-0" id="modal-closer" onclick="window.closeModal()"></div>
             <div class="modal-glass glass-panel relative w-full max-w-sm rounded-[44px] p-9 shadow-2xl">
                 <button type="button" onclick="window.closeModal()" class="absolute top-7 right-7 w-10 h-10 bg-black/[0.04] hover:bg-black/[0.08] rounded-full flex items-center justify-center text-gray-500 btn-press transition-all z-20">
                     <i class="fas fa-times text-sm"></i>
@@ -103,19 +102,19 @@
         </div>
 
         <nav class="fixed bottom-8 w-[calc(100%-48px)] max-w-[384px] left-1/2 -translate-x-1/2 glass-panel border border-white/50 rounded-[38px] px-8 py-4 flex justify-around items-center shadow-2xl safe-area-bottom z-40">
-            <button onclick="window.nav('generator')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-generator">
+            <button onclick="window.nav('generator')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-all duration-300" id="nav-generator">
                 <i class="fas fa-wand-magic-sparkles text-xl"></i>
                 <span class="text-[10px] font-black">생성</span>
             </button>
-            <button onclick="window.nav('folders')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-folders">
+            <button onclick="window.nav('folders')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-all duration-300" id="nav-folders">
                 <i class="fas fa-folder-open text-xl"></i>
                 <span class="text-[10px] font-black">보관함</span>
             </button>
-            <button onclick="window.nav('quiz')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-quiz">
+            <button onclick="window.nav('quiz')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-all duration-300" id="nav-quiz">
                 <i class="fas fa-bolt-lightning text-xl"></i>
                 <span class="text-[10px] font-black">퀴즈</span>
             </button>
-            <button onclick="window.nav('dict')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted" id="nav-dict">
+            <button onclick="window.nav('dict')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-all duration-300" id="nav-dict">
                 <i class="fas fa-book-open text-xl"></i>
                 <span class="text-[10px] font-black">사전</span>
             </button>
@@ -151,7 +150,7 @@
             quizBadge.textContent = `정답률 ${rate}%`;
 
             const activeNavId = (state.view === 'folderDetail') ? 'nav-folders' : `nav-${state.view}`;
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('text-toss-blue'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('text-toss-blue', 'text-toss-muted'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.add('text-toss-muted'));
             const activeNav = document.getElementById(activeNavId);
             if(activeNav) { activeNav.classList.remove('text-toss-muted'); activeNav.classList.add('text-toss-blue'); }
@@ -172,15 +171,15 @@
             document.getElementById('header-title').textContent = '단어 생성';
             const colors = { 1: 'bg-blue-50', 2: 'bg-purple-50', 3: 'bg-emerald-50', 4: 'bg-amber-50' };
             main.innerHTML = `
-                <div class="view-content pt-6">
+                <div class="view-content pt-6 text-left">
                     <div class="flex gap-2.5 mb-8">
                         ${[1,2,3,4].map(n => `<button onclick="window.setLevel(${n})" class="flex-1 py-4 rounded-[24px] font-black text-sm transition-all border-2 ${state.level === n ? 'bg-white border-toss-blue text-toss-blue shadow-lg' : 'bg-white text-gray-300 border-gray-100'}">N${n}</button>`).join('')}
                     </div>
                     <button onclick="window.generate()" class="w-full py-5 bg-toss-blue text-white rounded-[28px] font-black text-[17px] shadow-xl shadow-blue-100 btn-press mb-10 transition-all">새로운 단어 가져오기</button>
-                    <div class="space-y-4 text-left">
+                    <div class="space-y-4">
                         ${state.words.map((w, i) => `
                             <div onclick="window.openDetail(${i}, 'gen')" class="p-7 rounded-[40px] ${colors[state.level]} border border-white flex justify-between items-center shadow-sm btn-press cursor-pointer group">
-                                <div><div class="flex items-center gap-2 mb-1.5"><span class="text-[22px] font-black text-toss-text">${w.kanji}</span><span class="text-[11px] font-black px-2.5 py-0.5 bg-white/60 rounded-full text-gray-500">${w.kana}</span></div><p class="text-[15px] text-gray-600 font-bold">${w.korean_meaning}</p></div>
+                                <div class="text-left"><div class="flex items-center gap-2 mb-1.5"><span class="text-[22px] font-black text-toss-text">${w.kanji}</span><span class="text-[11px] font-black px-2.5 py-0.5 bg-white/60 rounded-full text-gray-500">${w.kana}</span></div><p class="text-[15px] text-gray-600 font-bold">${w.korean_meaning}</p></div>
                                 <div class="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center text-gray-400 group-hover:bg-white shadow-sm transition-all"><i class="fas fa-chevron-right text-xs"></i></div>
                             </div>
                         `).join('')}
@@ -215,8 +214,8 @@
                     <button onclick="window.nav('folders')" class="text-gray-400 font-bold text-[13px] mb-6 flex items-center"><i class="fas fa-arrow-left mr-2"></i>보관함 돌아가기</button>
                     <div class="space-y-4">
                         ${folder.words.map((w, i) => `
-                            <div onclick="window.openDetail(${i}, 'folder')" class="p-7 rounded-[40px] bg-white border border-gray-100 flex justify-between items-center shadow-sm btn-press cursor-pointer text-left">
-                                <div><div class="flex items-center gap-2 mb-1.5 text-left"><span class="text-[18px] font-black text-toss-text">${w.kanji}</span><span class="text-[11px] text-toss-blue font-black">${w.kana}</span></div><p class="text-[15px] text-gray-500 font-bold">${w.korean_meaning}</p></div>
+                            <div onclick="window.openDetail(${i}, 'folder')" class="p-7 rounded-[40px] bg-white border border-gray-100 flex justify-between items-center shadow-sm btn-press cursor-pointer">
+                                <div><div class="flex items-center gap-2 mb-1.5 text-left"><span class="text-[18px] font-black text-toss-text">${w.kanji}</span><span class="text-[11px] text-toss-blue font-black">${w.kana}</span></div><p class="text-[15px] text-gray-500 font-bold text-left">${w.korean_meaning}</p></div>
                                 <div class="text-gray-200"><i class="fas fa-chevron-right text-xs"></i></div>
                             </div>
                         `).join('')}
@@ -242,7 +241,7 @@
                             <button onclick="window.startQuiz('ai')" class="w-full p-8 rounded-[36px] bg-gradient-to-br from-toss-blue to-blue-600 text-white shadow-xl btn-press text-left">
                                 <span class="text-[11px] font-black text-white/60 uppercase tracking-widest block mb-2">AI Generated</span>
                                 <h3 class="text-lg font-black mb-1">N${state.level} 실전 모의고사</h3>
-                                <p class="text-[13px] text-white/70 font-bold">AI가 엄선한 레벨별 핵심 단어</p>
+                                <p class="text-[13px] text-white/70 font-bold">AI가 엄선한 레벨 핵심 단어</p>
                             </button>
                         </div>
                     </div>
@@ -318,10 +317,10 @@
                     <div class="toss-card p-14 text-center relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50">
                         <span class="px-5 py-1.5 bg-gray-50 text-toss-blue rounded-full text-[12px] font-black mb-7 tracking-widest inline-block border border-black/[0.03]">${word.kana}</span>
                         <h2 class="text-6xl font-black mb-6 tracking-tighter text-toss-text">${word.kanji}</h2>
-                        <p class="text-2xl text-gray-500 font-bold tracking-tight">${word.korean_meaning}</p>
+                        <p class="text-2xl text-gray-500 font-bold tracking-tight text-center">${word.korean_meaning}</p>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4">
+                    <div class="grid grid-cols-1 gap-4 text-left">
                         <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left">
                             <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-6 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.5)]"></span> 유의어</h4>
                             <div class="grid grid-cols-2 gap-2.5">
@@ -333,7 +332,7 @@
                                             <span class="reading">${kana || '읽기'}</span>
                                             <span class="kanji">${kanji}</span>
                                         </button>`;
-                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1">데이터 없음</span>'}
+                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1 text-left">데이터 없음</span>'}
                             </div>
                         </div>
                         <div class="p-8 rounded-[44px] bg-white border border-gray-100 shadow-sm text-left">
@@ -347,15 +346,15 @@
                                             <span class="reading">${kana || '읽기'}</span>
                                             <span class="kanji">${kanji}</span>
                                         </button>`;
-                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1">데이터 없음</span>'}
+                                }).join('') || '<span class="text-gray-300 text-xs font-bold px-1 text-left">데이터 없음</span>'}
                             </div>
                         </div>
                     </div>
 
-                    <div class="toss-card p-9">
-                        <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-8 opacity-60">Contextual Examples</h4>
-                        <div class="space-y-5">
-                            ${word.examples.map(ex => `<div class="p-7 rounded-[40px] bg-gray-50/80 border border-white hover:bg-white transition-all shadow-sm text-left"><p class="text-[17px] font-bold mb-2.5 text-toss-text leading-snug tracking-tight">${ex.jp}</p><p class="text-gray-400 text-sm font-bold tracking-tight">${ex.kr}</p></div>`).join('')}
+                    <div class="toss-card p-9 text-left">
+                        <h4 class="text-[11px] font-black text-gray-300 uppercase tracking-widest mb-8 opacity-60 text-left">Contextual Examples</h4>
+                        <div class="space-y-5 text-left">
+                            ${word.examples.map(ex => `<div class="p-7 rounded-[40px] bg-gray-50/80 border border-white hover:bg-white transition-all shadow-sm text-left"><p class="text-[17px] font-bold mb-2.5 text-toss-text leading-snug tracking-tight text-left">${ex.jp}</p><p class="text-gray-400 text-sm font-bold tracking-tight text-left">${ex.kr}</p></div>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -373,9 +372,9 @@
                     <p class="text-[24px] font-black text-gray-800 tracking-tight text-center">${word.korean_meaning}</p>
                 </div>
                 <div class="grid grid-cols-1 gap-4 mb-10 text-left">
-                    <div class="p-7 rounded-[36px] bg-gray-50/50 border border-gray-100 text-left">
-                        <p class="text-[10px] font-black text-blue-600/40 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400/50"></span> Synonyms</p>
-                        <div class="grid grid-cols-2 gap-2.5 text-left">
+                    <div class="p-7 rounded-[36px] bg-pastel-blue-bg/40 border border-pastel-blue-border/40 text-left">
+                        <p class="text-[10px] font-black text-blue-500 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> Synonyms</p>
+                        <div class="grid grid-cols-2 gap-3 text-left">
                             ${(word.synonyms || []).map(s => {
                                 const kanji = typeof s === 'string' ? s.split('(')[0] : s.kanji;
                                 const kana = typeof s === 'string' ? (s.includes('(') ? s.split('(')[1].replace(')', '') : '') : s.kana;
@@ -387,9 +386,9 @@
                             }).join('') || '-'}
                         </div>
                     </div>
-                    <div class="p-7 rounded-[36px] bg-gray-50/50 border border-gray-100 text-left">
-                        <p class="text-[10px] font-black text-rose-600/40 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400/50"></span> Antonyms</p>
-                        <div class="grid grid-cols-2 gap-2.5 text-left">
+                    <div class="p-7 rounded-[36px] bg-pastel-rose-bg/40 border border-pastel-rose-border/40 text-left">
+                        <p class="text-[10px] font-black text-rose-500 mb-5 uppercase tracking-[0.2em] flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Antonyms</p>
+                        <div class="grid grid-cols-2 gap-3 text-left">
                             ${(word.antonyms || []).map(a => {
                                 const kanji = typeof a === 'string' ? a.split('(')[0] : a.kanji;
                                 const kana = typeof a === 'string' ? (a.includes('(') ? a.split('(')[1].replace(')', '') : '') : a.kana;
@@ -407,7 +406,7 @@
                         <select id="folder-select" class="flex-1 px-6 bg-black/[0.04] rounded-[28px] font-black text-[13px] outline-none appearance-none cursor-pointer text-gray-600">${state.folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}</select>
                         <button onclick="window.saveToFolder('${encodeURIComponent(JSON.stringify(word))}')" class="flex-[1.6] bg-toss-blue text-white rounded-[28px] font-black text-sm shadow-xl shadow-blue-100 btn-press">${isSaved ? '다른 폴더 추가' : '단어장 저장'}</button>
                     </div>
-                    <button onclick="window.searchInDict('${word.kanji}')" class="w-full h-14 bg-gray-50 hover:bg-gray-100 text-toss-muted rounded-[28px] font-black text-[12px] btn-press border border-gray-100 transition-colors uppercase tracking-widest"><i class="fas fa-search mr-2"></i>Analyze in Dict</button>
+                    <button onclick="window.searchInDict('${word.kanji}')" class="w-full h-14 bg-gray-50 hover:bg-gray-100 text-toss-muted rounded-[28px] font-black text-[12px] btn-press border border-gray-100 transition-colors uppercase tracking-widest text-center"><i class="fas fa-search mr-2"></i>Analyze in Dict</button>
                 </div>
             `;
             modal.classList.remove('hidden');
@@ -461,7 +460,7 @@
                 state.quiz.currentIdx++; state.quiz.answered = false; state.quiz.selectedIdx = null; updateUI();
             } else {
                 state.quiz.active = false; updateUI();
-                modalBody.innerHTML = `<div class="view-content flex flex-col items-center py-6 text-center text-left"><div class="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mb-8 shadow-inner"><i class="fas fa-trophy text-4xl text-toss-blue"></i></div><h2 class="text-3xl font-black mb-3 tracking-tight">퀴즈 종료</h2><p class="text-gray-400 font-bold mb-10 leading-relaxed text-center">${state.quiz.questions.length}문제 중 ${state.quiz.score}문제를 <br> 맞혔습니다! 대단해요!</p><button onclick="window.closeModal()" class="w-full py-5 bg-toss-blue text-white rounded-[32px] font-black shadow-lg shadow-blue-50 transition-all active:scale-95">확인</button></div>`;
+                modalBody.innerHTML = `<div class="view-content flex flex-col items-center py-6 text-center text-left"><div class="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mb-8 shadow-inner"><i class="fas fa-trophy text-4xl text-toss-blue"></i></div><h2 class="text-3xl font-black mb-3 tracking-tight">퀴즈 종료</h2><p class="text-gray-400 font-bold mb-10 leading-relaxed text-center">${state.quiz.questions.length}문제 중 ${state.quiz.score}문제를 <br> 맞혔습니다! 대단해요!</p><button onclick="window.closeModal()" class="w-full py-5 bg-toss-blue text-white rounded-[32px] font-black shadow-lg shadow-blue-50 transition-all active:scale-95 text-center">확인</button></div>`;
                 modal.classList.remove('hidden');
             }
         };
