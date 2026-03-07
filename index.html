@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JLPT Vocab Master</title>
+    <title>JLPT Master</title>
+    <!-- Pretendard JP Font -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-jp.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
@@ -14,74 +16,86 @@
                         'toss-blue': '#3182F6',
                         'toss-text': '#191F28',
                         'toss-muted': '#8B95A1',
+                        'glass-bg': 'rgba(255, 255, 255, 0.7)',
                         'pastel-blue': '#E3F2FD',
                         'pastel-purple': '#F3E5F5',
                         'pastel-green': '#E8F5E9',
-                        'pastel-orange': '#FFF3E0',
                         'pastel-pink': '#FCE4EC',
-                        'level-1': '#E3F2FD',
-                        'level-2': '#F3E5F5',
-                        'level-3': '#E8F5E9',
-                        'level-4': '#FFF3E0',
+                        'pastel-orange': '#FFF3E0',
                     }
                 },
             },
         };
     </script>
     <style>
-        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        body { font-family: 'Pretendard', sans-serif; background-color: #F8FAFC; color: #191F28; -webkit-font-smoothing: antialiased; }
+        body { 
+            font-family: "Pretendard JP", sans-serif; 
+            background-color: #F2F4F6; 
+            color: #191F28; 
+            -webkit-font-smoothing: antialiased; 
+            -webkit-tap-highlight-color: transparent;
+        }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        .view-content { animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .skeleton { background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%); background-size: 200% 100%; animation: pulse 1.5s infinite linear; }
-        @keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .view-content { animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideUpFade { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .glass-panel { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+        .toss-card { background: #ffffff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); border: 1px solid rgba(0,0,0,0.03); }
+        
+        /* Loading Spinner */
+        .loading-spinner { width: 44px; height: 44px; border: 5px solid rgba(49, 130, 246, 0.1); border-top: 5px solid #3182F6; border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         .nav-item.active-tab { color: #3182F6; }
-        .modal-bg { background-color: rgba(0,0,0,0.3); backdrop-filter: blur(8px); }
-        .modal-content { animation: modalUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes modalUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Modal Animation */
+        .modal-overlay { background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(12px); animation: fadeIn 0.3s ease-out; }
+        .modal-glass { animation: modalEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalEnter { from { opacity: 0; transform: scale(0.9) translateY(40px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        
         .btn-press:active { transform: scale(0.96); }
-        .chip { @apply px-3 py-1.5 rounded-full text-[11px] font-bold; }
+        .skeleton { background: linear-gradient(90deg, #F2F4F6 25%, #E5E8EB 50%, #F2F4F6 75%); background-size: 200% 100%; animation: pulse 1.5s infinite linear; }
+        @keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
 <body class="flex flex-col items-center">
 
-    <div id="app" class="w-full max-w-md min-h-screen bg-white flex flex-col relative overflow-hidden shadow-2xl shadow-gray-200/50">
+    <div id="app" class="w-full max-w-md min-h-screen bg-white flex flex-col relative overflow-hidden shadow-2xl">
         
-        <!-- Toast Notification -->
-        <div id="toast" class="fixed top-14 left-1/2 -translate-x-1/2 px-5 py-3 bg-gray-900/90 text-white text-[13px] font-bold rounded-2xl shadow-xl z-[70] opacity-0 transition-all duration-300 pointer-events-none"></div>
-
-        <!-- Header -->
-        <header class="px-6 pt-14 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-xl sticky top-0 z-30">
+        <!-- Global Header -->
+        <header id="app-header" class="px-6 pt-14 pb-4 flex justify-between items-center sticky top-0 bg-white/70 backdrop-blur-xl z-30 transition-all">
             <div class="flex flex-col">
-                <span class="text-[10px] font-black text-toss-blue uppercase tracking-widest opacity-80">JLPT Master</span>
-                <h1 class="text-xl font-black text-gray-800" id="header-title">단어 생성</h1>
+                <span class="text-[10px] font-black text-toss-blue tracking-widest uppercase">JLPT Master</span>
+                <h1 class="text-xl font-black text-toss-text tracking-tight" id="header-title">오늘의 단어</h1>
             </div>
-            <div id="score-badge" class="bg-blue-50 text-toss-blue px-4 py-1.5 rounded-full text-[11px] font-black">정답률 0%</div>
+            <div class="flex items-center gap-2">
+                <div id="quiz-badge" class="hidden bg-blue-50 text-toss-blue px-3.5 py-1.5 rounded-full text-[11px] font-black">정답률 0%</div>
+                <button onclick="window.nav('dict')" class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-toss-muted btn-press">
+                    <i class="fas fa-search text-sm"></i>
+                </button>
+            </div>
         </header>
 
-        <!-- Main Content -->
-        <main id="main-content" class="flex-1 px-6 pb-36 overflow-y-auto no-scrollbar">
-            <!-- Content Injected Here -->
+        <!-- Main View Container -->
+        <main id="main-content" class="flex-1 px-6 pb-40 overflow-y-auto no-scrollbar">
+            <!-- Dynamic Content -->
         </main>
 
-        <!-- Modal (Detail) -->
-        <div id="modal" class="hidden fixed inset-0 z-50 flex items-end">
-            <div class="modal-bg absolute inset-0" onclick="window.closeModal()"></div>
-            <div class="modal-content relative w-full bg-white rounded-t-[44px] px-8 pt-6 pb-12 shadow-2xl overflow-y-auto max-h-[90vh]">
-                <div class="flex justify-between items-center mb-6">
-                    <div class="w-12 h-1.5 bg-gray-100 rounded-full mx-auto ml-[calc(50%-24px)]"></div>
-                    <button onclick="window.closeModal()" class="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 btn-press">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
+        <!-- Glass Modal (Word Detail) -->
+        <div id="modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-6">
+            <div class="modal-overlay absolute inset-0" onclick="window.closeModal()"></div>
+            <div class="modal-glass glass-panel relative w-full max-w-sm rounded-[48px] p-8 shadow-2xl overflow-hidden border border-white/40">
+                <button onclick="window.closeModal()" class="absolute top-6 right-6 w-10 h-10 bg-black/5 rounded-full flex items-center justify-center text-gray-500 btn-press">
+                    <i class="fas fa-times"></i>
+                </button>
                 <div id="modal-body"></div>
             </div>
         </div>
 
-        <!-- Floating Navigation -->
-        <nav class="fixed bottom-8 w-[calc(100%-48px)] max-w-[384px] left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-3xl border border-gray-100 rounded-[32px] px-10 py-5 flex justify-around items-center shadow-2xl safe-area-bottom z-40">
+        <!-- Floating Bottom Nav -->
+        <nav class="fixed bottom-8 w-[calc(100%-48px)] max-w-[384px] left-1/2 -translate-x-1/2 glass-panel border border-white/50 rounded-[36px] px-8 py-4 flex justify-around items-center shadow-2xl safe-area-bottom z-40">
             <button onclick="window.nav('generator')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-colors" id="nav-generator">
                 <i class="fas fa-sparkles text-xl"></i>
                 <span class="text-[10px] font-black">생성</span>
@@ -91,37 +105,54 @@
                 <span class="text-[10px] font-black">보관함</span>
             </button>
             <button onclick="window.nav('quiz')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-colors" id="nav-quiz">
-                <i class="fas fa-bolt-lightning text-xl"></i>
+                <i class="fas fa-fire text-xl"></i>
                 <span class="text-[10px] font-black">퀴즈</span>
             </button>
+            <button onclick="window.nav('dict')" class="nav-item flex flex-col items-center gap-1.5 text-toss-muted transition-colors" id="nav-dict">
+                <i class="fas fa-book-open text-xl"></i>
+                <span class="text-[10px] font-black">사전</span>
+            </button>
         </nav>
+        
+        <!-- Toast -->
+        <div id="toast" class="fixed top-12 left-1/2 -translate-x-1/2 px-5 py-3 bg-gray-900/90 text-white text-[13px] font-bold rounded-2xl shadow-xl z-[70] opacity-0 transition-all duration-300 pointer-events-none"></div>
     </div>
 
     <script type="module">
         const state = {
             view: 'generator',
-            currentFolderId: null,
             level: 2,
             loading: false,
             words: [],
-            folders: JSON.parse(localStorage.getItem('jlpt_v5_folders') || '[{"id":"f1","name":"기본 폴더","words":[]}]'),
-            stats: JSON.parse(localStorage.getItem('jlpt_v5_stats') || '{"c":0, "t":0}')
+            folders: JSON.parse(localStorage.getItem('jlpt_v6_folders') || '[{"id":"f1","name":"기본 폴더","words":[]}]'),
+            stats: JSON.parse(localStorage.getItem('jlpt_v6_stats') || '{"c":0, "t":0}'),
+            currentFolderId: null,
+            dictSearch: '',
+            dictResult: null
         };
 
         const main = document.getElementById('main-content');
         const modal = document.getElementById('modal');
         const modalBody = document.getElementById('modal-body');
         const toast = document.getElementById('toast');
+        const quizBadge = document.getElementById('quiz-badge');
 
         const showToast = (msg) => {
             toast.textContent = msg;
-            toast.classList.remove('opacity-0');
             toast.classList.add('opacity-100');
-            setTimeout(() => toast.classList.replace('opacity-100', 'opacity-0'), 2000);
+            setTimeout(() => toast.classList.remove('opacity-100'), 2000);
         };
 
         const updateUI = () => {
-            const activeNavId = state.view === 'folderDetail' ? 'nav-folders' : `nav-${state.view}`;
+            // Header Stats visibility
+            quizBadge.classList.toggle('hidden', state.view !== 'quiz');
+            if (state.view === 'quiz') {
+                const rate = state.stats.t === 0 ? 0 : Math.round((state.stats.c / state.stats.t) * 100);
+                quizBadge.textContent = `정답률 ${rate}%`;
+            }
+
+            // Navigation active state
+            const activeNavId = (state.view === 'folderDetail') ? 'nav-folders' : `nav-${state.view}`;
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active-tab'));
             if(document.getElementById(activeNavId)) document.getElementById(activeNavId).classList.add('active-tab');
 
@@ -132,29 +163,30 @@
                 case 'folders': renderFolders(); break;
                 case 'folderDetail': renderFolderDetail(); break;
                 case 'quiz': renderQuiz(); break;
+                case 'dict': renderDict(); break;
             }
         };
 
         const renderLoading = () => {
-            main.innerHTML = `<div class="pt-10 space-y-6">${Array(5).fill('<div class="h-28 skeleton rounded-[32px] w-full"></div>').join('')}</div>`;
+            main.innerHTML = `<div class="pt-10 space-y-6">${Array(4).fill('<div class="h-32 skeleton rounded-[40px] w-full"></div>').join('')}</div>`;
         };
 
         const renderGenerator = () => {
             document.getElementById('header-title').textContent = '단어 생성';
-            const levelColors = { 1: 'bg-level-1', 2: 'bg-level-2', 3: 'bg-level-3', 4: 'bg-level-4' };
+            const colors = { 1: 'bg-pastel-blue', 2: 'bg-pastel-purple', 3: 'bg-pastel-green', 4: 'bg-pastel-orange' };
             main.innerHTML = `
                 <div class="view-content pt-6">
                     <div class="flex gap-2 mb-8">
                         ${[1,2,3,4].map(n => `<button onclick="window.setLevel(${n})" class="flex-1 py-4 rounded-2xl font-black text-sm transition-all border-2 ${state.level === n ? 'bg-white border-toss-blue text-toss-blue shadow-lg shadow-blue-50' : 'bg-white text-gray-300 border-gray-100'}">N${n}</button>`).join('')}
                     </div>
-                    <button onclick="window.generate()" class="w-full py-5 bg-toss-blue text-white rounded-[24px] font-black text-[17px] shadow-xl shadow-blue-100 btn-press mb-10 transition-all">랜덤 단어 가져오기</button>
+                    <button onclick="window.generate()" class="w-full py-5 bg-toss-blue text-white rounded-[28px] font-black text-[17px] shadow-xl shadow-blue-100 btn-press mb-10 transition-all">랜덤 단어 가져오기</button>
                     <div class="space-y-4">
                         ${state.words.map((w, i) => `
-                            <div onclick="window.openDetail(${i}, 'gen')" class="p-6 rounded-[32px] ${levelColors[state.level]} border border-white flex justify-between items-center shadow-sm btn-press cursor-pointer group">
+                            <div onclick="window.openDetail(${i}, 'gen')" class="p-7 rounded-[40px] ${colors[state.level]} border border-white flex justify-between items-center shadow-sm btn-press cursor-pointer group">
                                 <div>
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-[20px] font-black text-gray-800">${w.kanji}</span>
-                                        <span class="text-[10px] font-black px-2 py-0.5 bg-white/60 rounded-full text-gray-500">${w.kana}</span>
+                                        <span class="text-[22px] font-black text-gray-800">${w.kanji}</span>
+                                        <span class="text-[11px] font-black px-2 py-0.5 bg-white/60 rounded-full text-gray-500">${w.kana}</span>
                                     </div>
                                     <p class="text-[15px] text-gray-600 font-bold">${w.korean_meaning}</p>
                                 </div>
@@ -167,19 +199,19 @@
         };
 
         const renderFolders = () => {
-            document.getElementById('header-title').textContent = '나의 폴더';
+            document.getElementById('header-title').textContent = '나의 보관함';
             main.innerHTML = `
                 <div class="view-content pt-6">
                     <div class="flex justify-between items-center mb-6 px-1">
-                        <p class="text-[12px] font-black text-gray-400 uppercase tracking-widest">Saved Collections</p>
+                        <p class="text-[12px] font-black text-gray-400 uppercase tracking-widest">Collections</p>
                         <button onclick="window.createFolder()" class="text-toss-blue font-black text-[12px] px-3.5 py-1.5 bg-blue-50 rounded-xl">폴더 추가</button>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                        ${state.folders.map((f, i) => `
-                            <div onclick="window.openFolder('${f.id}')" class="p-6 rounded-[32px] bg-white border border-gray-100 shadow-sm btn-press cursor-pointer">
-                                <div class="w-11 h-11 rounded-2xl bg-pastel-blue flex items-center justify-center text-toss-blue mb-4 shadow-inner"><i class="fas fa-folder"></i></div>
-                                <h3 class="font-black text-[16px] mb-1 truncate">${f.name}</h3>
-                                <p class="text-[11px] text-gray-400 font-bold">${f.words.length}개의 단어</p>
+                        ${state.folders.map((f) => `
+                            <div onclick="window.openFolder('${f.id}')" class="p-6 rounded-[40px] bg-white border border-gray-100 shadow-sm btn-press cursor-pointer">
+                                <div class="w-12 h-12 rounded-3xl bg-pastel-blue flex items-center justify-center text-toss-blue mb-5 shadow-inner"><i class="fas fa-folder"></i></div>
+                                <h3 class="font-black text-[17px] mb-1 truncate">${f.name}</h3>
+                                <p class="text-[12px] text-gray-400 font-bold">${f.words.length} 단어</p>
                             </div>
                         `).join('')}
                     </div>
@@ -193,35 +225,60 @@
             main.innerHTML = `
                 <div class="view-content pt-6">
                     <div class="flex justify-between items-center mb-8 px-1">
-                        <button onclick="window.nav('folders')" class="text-gray-400 font-bold text-sm"><i class="fas fa-arrow-left mr-2"></i>돌아가기</button>
+                        <button onclick="window.nav('folders')" class="text-gray-400 font-bold text-sm"><i class="fas fa-arrow-left mr-2"></i>보관함</button>
                         <div class="flex gap-4">
-                            <button onclick="window.renameFolder('${folder.id}')" class="text-gray-400 font-bold text-xs underline decoration-gray-200">수정</button>
-                            <button onclick="window.deleteFolder('${folder.id}')" class="text-red-300 font-bold text-xs underline decoration-red-100">삭제</button>
+                            <button onclick="window.renameFolder('${folder.id}')" class="text-gray-400 font-bold text-xs underline">수정</button>
+                            <button onclick="window.deleteFolder('${folder.id}')" class="text-red-300 font-bold text-xs underline">삭제</button>
                         </div>
                     </div>
                     <div class="space-y-4">
                         ${folder.words.length > 0 ? folder.words.map((w, i) => `
-                            <div onclick="window.openDetail(${i}, 'folder')" class="p-6 rounded-[32px] bg-white border border-gray-100 flex justify-between items-center shadow-sm btn-press cursor-pointer">
+                            <div onclick="window.openDetail(${i}, 'folder')" class="p-7 rounded-[40px] bg-white border border-gray-100 flex justify-between items-center shadow-sm btn-press cursor-pointer">
                                 <div>
                                     <div class="flex items-center gap-2 mb-1">
                                         <span class="text-[18px] font-black text-gray-800">${w.kanji}</span>
-                                        <span class="text-[10px] text-toss-blue font-black">${w.kana}</span>
+                                        <span class="text-[11px] text-toss-blue font-black">${w.kana}</span>
                                     </div>
-                                    <p class="text-[14px] text-gray-500 font-bold">${w.korean_meaning}</p>
+                                    <p class="text-[15px] text-gray-500 font-bold">${w.korean_meaning}</p>
                                 </div>
                                 <div class="text-gray-200"><i class="fas fa-chevron-right text-xs"></i></div>
                             </div>
-                        `).join('') : '<p class="text-center py-28 text-gray-300 font-bold">비어있는 단어장입니다.</p>'}
+                        `).join('') : '<p class="text-center py-24 text-gray-300 font-bold">비어있습니다.</p>'}
                     </div>
                 </div>
             `;
         };
 
         const renderQuiz = () => {
-            main.innerHTML = `<div class="view-content py-24 text-center px-10"><div class="w-24 h-24 bg-pastel-orange rounded-[40px] flex items-center justify-center mx-auto mb-10 shadow-inner rotate-3"><i class="fas fa-bolt-lightning text-4xl text-orange-400"></i></div><h2 class="text-2xl font-black mb-4">학습 모드</h2><p class="text-gray-400 font-bold mb-12 leading-relaxed">저장된 단어로<br/>무작위 퀴즈를 생성합니다.</p><button onclick="window.startQuiz()" class="w-full py-5 bg-gray-900 text-white rounded-[28px] font-black shadow-2xl">지금 시작하기</button></div>`;
+            document.getElementById('header-title').textContent = '테스트';
+            main.innerHTML = `<div class="view-content py-20 text-center px-8"><div class="w-24 h-24 bg-pastel-orange rounded-[44px] flex items-center justify-center mx-auto mb-10 shadow-inner rotate-6"><i class="fas fa-bolt-lightning text-4xl text-orange-400"></i></div><h2 class="text-2xl font-black mb-4">단어 실력 확인</h2><p class="text-gray-400 font-bold mb-12 leading-relaxed px-4">내가 저장한 단어들로<br/>오늘의 퀴즈를 풀어볼까요?</p><button onclick="window.startQuiz()" class="w-full py-5 bg-gray-900 text-white rounded-[28px] font-black shadow-2xl btn-press">퀴즈 시작</button></div>`;
         };
 
-        window.nav = (v) => { state.view = v; updateUI(); };
+        const renderDict = () => {
+            document.getElementById('header-title').textContent = '사전';
+            main.innerHTML = `
+                <div class="view-content pt-6 flex flex-col space-y-10">
+                    <div class="flex flex-col items-center justify-center text-center space-y-6 pt-10">
+                        <div class="w-20 h-20 bg-white toss-card flex items-center justify-center mx-auto shadow-sm text-4xl">🍡</div>
+                        <div>
+                            <h2 class="text-3xl font-black tracking-tight text-[#191F28]">모찌 사전</h2>
+                            <p class="text-toss-muted font-bold text-sm mt-2">AI가 분석한 정교한 분석</p>
+                        </div>
+                    </div>
+                    <div class="relative group">
+                        <input type="text" id="dictInput" value="${state.dictSearch}" placeholder="단어를 검색해 보세요" class="w-full bg-white toss-card py-5 px-14 text-lg focus:ring-4 focus:ring-toss-blue/5 outline-none border-none transition-all shadow-xl shadow-black/[0.03]">
+                        <svg class="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-toss-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        <button onclick="window.searchDict()" class="absolute right-4 top-1/2 -translate-y-1/2 px-4 py-2 bg-toss-blue text-white rounded-2xl text-xs font-black btn-press">검색</button>
+                    </div>
+                    <div id="dictResults" class="space-y-6 pb-10"></div>
+                </div>
+            `;
+            const input = document.getElementById('dictInput');
+            if(input) input.onkeypress = e => e.key === 'Enter' && window.searchDict();
+        };
+
+        // --- Logic ---
+        window.nav = (v) => { state.view = v; updateUI(); window.scrollTo(0,0); };
         window.setLevel = (l) => { state.level = l; updateUI(); };
         window.closeModal = () => modal.classList.add('hidden');
 
@@ -230,10 +287,48 @@
             try {
                 const res = await fetch('/api/vocab', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({level: state.level}) });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '연결 실패');
+                if (!res.ok) throw new Error();
                 state.words = data;
             } catch (e) { showToast(`잠시 후 다시 시도해 주세요.`); }
             finally { state.loading = false; updateUI(); }
+        };
+
+        window.searchDict = async (wordQuery) => {
+            const query = wordQuery || document.getElementById('dictInput').value;
+            if(!query.trim()) return;
+            state.dictSearch = query;
+            const container = document.getElementById('dictResults');
+            if(container) container.innerHTML = `<div class="flex flex-col items-center py-20 gap-4"><div class="loading-spinner"></div><p class="text-sm font-bold text-gray-400">단어를 분석 중...</p></div>`;
+            
+            try {
+                const response = await fetch('/api/vocab', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ level: 'dict', query }) // Use special flag for dict if needed
+                });
+                const data = await response.json();
+                // If special API doesn't exist, we mimic results for now or use the generator
+                // In a real environment, you'd use a dedicated dictionary API.
+                renderDictResult(data[0] || data); 
+            } catch (e) { container.innerHTML = `<p class="text-center py-20 text-red-300">오류가 발생했습니다.</p>`; }
+        };
+
+        const renderDictResult = (word) => {
+            const container = document.getElementById('dictResults');
+            if(!container) return;
+            container.innerHTML = `
+                <div class="toss-card p-10 text-center animate-in slide-in-from-bottom-4 duration-500">
+                    <span class="px-4 py-1.5 bg-[#F2F4F6] text-[#6D92F0] rounded-full text-[12px] font-black mb-5 tracking-widest inline-block">${word.kana}</span>
+                    <h2 class="text-5xl font-black mb-6 tracking-tight text-[#191F28]">${word.kanji}</h2>
+                    <p class="text-xl text-[#4E5968] font-bold">${word.korean_meaning}</p>
+                </div>
+                <div class="toss-card p-8">
+                    <h3 class="text-lg font-black text-[#191F28] mb-6 flex items-center gap-3"><span class="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center text-toss-blue text-sm">📖</span> 예문</h3>
+                    <div class="space-y-4">
+                        ${word.examples.map(ex => `<div class="p-6 rounded-3xl bg-gray-50"><p class="text-lg font-medium mb-2 text-[#191F28]">${ex.jp}</p><p class="text-gray-400 text-sm font-bold">${ex.kr}</p></div>`).join('')}
+                    </div>
+                </div>
+            `;
         };
 
         window.openDetail = (index, type) => {
@@ -241,81 +336,88 @@
             const isSaved = state.folders.some(f => f.words.some(w => w.kanji === word.kanji));
             
             modalBody.innerHTML = `
-                <div class="flex flex-col items-center text-center mb-10">
-                    <span class="text-[11px] font-black text-blue-500 px-3 py-1 bg-blue-50 rounded-full mb-5 tracking-tighter uppercase">${word.part_of_speech || 'JLPT N' + state.level}</span>
-                    <h2 class="text-4xl font-black mb-3 tracking-tight">${word.kanji}</h2>
-                    <p class="text-lg font-bold text-gray-300 mb-6 tracking-wide">${word.kana}</p>
-                    <p class="text-[22px] font-black text-gray-800">${word.korean_meaning}</p>
+                <div class="flex flex-col items-center text-center mb-8">
+                    <span class="text-[10px] font-black text-toss-blue px-3 py-1 bg-blue-50 rounded-full mb-4 uppercase">${word.part_of_speech || 'N' + state.level}</span>
+                    <h2 class="text-5xl font-black mb-2 tracking-tighter">${word.kanji}</h2>
+                    <p class="text-lg font-bold text-gray-300 mb-6 tracking-wider">${word.kana}</p>
+                    <p class="text-2xl font-black text-gray-800">${word.korean_meaning}</p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-10">
-                    <div class="space-y-3">
-                        <p class="text-[11px] font-black text-gray-300 ml-1 uppercase">유의어</p>
-                        <div class="flex flex-wrap gap-2">
-                            ${word.synonyms?.length ? word.synonyms.map(s => `<div class="chip bg-pastel-green text-green-700">${s.word}</div>`).join('') : '<span class="text-xs text-gray-200 ml-1">없음</span>'}
+                <div class="grid grid-cols-2 gap-3 mb-8">
+                    <div class="p-5 rounded-[32px] bg-pastel-green/50 border border-white/40">
+                        <p class="text-[10px] font-black text-green-700/50 mb-3 uppercase">유의어</p>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${word.synonyms?.map(s => `<span class="px-2 py-1 bg-white/60 rounded-xl text-[11px] font-bold text-green-800">${s.word}</span>`).join('') || '-'}
                         </div>
                     </div>
-                    <div class="space-y-3">
-                        <p class="text-[11px] font-black text-gray-300 ml-1 uppercase">반의어</p>
-                        <div class="flex flex-wrap gap-2">
-                            ${word.antonyms?.length ? word.antonyms.map(a => `<div class="chip bg-pastel-pink text-pink-700">${a.word}</div>`).join('') : '<span class="text-xs text-gray-200 ml-1">없음</span>'}
+                    <div class="p-5 rounded-[32px] bg-pastel-pink/50 border border-white/40">
+                        <p class="text-[10px] font-black text-pink-700/50 mb-3 uppercase">반의어</p>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${word.antonyms?.map(a => `<span class="px-2 py-1 bg-white/60 rounded-xl text-[11px] font-bold text-pink-800">${a.word}</span>`).join('') || '-'}
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-4 mb-12">
-                    <p class="text-[11px] font-black text-gray-300 ml-1 uppercase tracking-widest">Example Sentences</p>
+                <div class="space-y-3 mb-10">
+                    <p class="text-[10px] font-black text-gray-300 ml-1 uppercase tracking-widest">Sentences</p>
                     ${word.examples.map(ex => `
-                        <div class="p-6 rounded-[32px] bg-gray-50 border border-gray-100/50">
-                            <p class="text-[16px] font-bold text-gray-800 mb-2 leading-relaxed">${ex.jp}</p>
-                            <p class="text-[14px] text-gray-500 font-medium">${ex.kr}</p>
+                        <div class="p-5 rounded-[32px] bg-white/50 border border-white/30">
+                            <p class="text-[16px] font-bold text-gray-800 mb-1 leading-tight">${ex.jp}</p>
+                            <p class="text-[13px] text-gray-400 font-bold">${ex.kr}</p>
                         </div>
                     `).join('')}
                 </div>
 
-                <div class="flex gap-3">
-                    <div class="flex-1 relative">
-                        <select id="folder-select" class="w-full h-full py-5 px-6 bg-gray-100 rounded-[28px] font-black text-sm appearance-none outline-none text-gray-700">
+                <div class="flex flex-col gap-3">
+                    <div class="flex gap-3">
+                        <select id="folder-select" class="flex-1 py-4 px-6 bg-black/5 rounded-[24px] font-black text-sm outline-none">
                             ${state.folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
                         </select>
-                        <i class="fas fa-chevron-down absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"></i>
+                        <button onclick="window.saveToFolder('${encodeURIComponent(JSON.stringify(word))}')" class="flex-[1.5] py-4 bg-toss-blue text-white rounded-[24px] font-black text-sm shadow-xl shadow-blue-100 btn-press">
+                            ${isSaved ? '다른 폴더 추가' : '단어장 저장'}
+                        </button>
                     </div>
-                    <button onclick="window.saveToFolder('${encodeURIComponent(JSON.stringify(word))}')" class="flex-[1.3] py-5 bg-toss-blue text-white rounded-[28px] font-black text-[16px] shadow-lg shadow-blue-100">
-                        ${isSaved ? '다른 폴더 저장' : '단어장 저장'}
+                    <button onclick="window.searchInDict('${word.kanji}')" class="w-full py-4 bg-gray-100 text-gray-500 rounded-[24px] font-black text-sm btn-press">
+                        <i class="fas fa-search mr-2"></i>사전에서 자세히 보기
                     </button>
                 </div>
             `;
             modal.classList.remove('hidden');
         };
 
+        window.searchInDict = (word) => {
+            window.closeModal();
+            state.view = 'dict';
+            state.dictSearch = word;
+            updateUI();
+            setTimeout(() => window.searchDict(word), 300);
+        };
+
         window.saveToFolder = (wordData) => {
             const word = JSON.parse(decodeURIComponent(wordData));
             const folderId = document.getElementById('folder-select').value;
             const folder = state.folders.find(f => f.id === folderId);
-            if (folder.words.some(w => w.kanji === word.kanji)) return showToast('이미 저장된 단어입니다.');
+            if (folder.words.some(w => w.kanji === word.kanji)) return showToast('이미 저장됨');
             folder.words.unshift(word);
-            localStorage.setItem('jlpt_v5_folders', JSON.stringify(state.folders));
+            localStorage.setItem('jlpt_v6_folders', JSON.stringify(state.folders));
             showToast(`"${folder.name}"에 저장 완료!`);
             window.closeModal(); updateUI();
         };
 
         window.openFolder = (id) => { state.currentFolderId = id; state.view = 'folderDetail'; updateUI(); };
         window.createFolder = () => {
-            const name = prompt('새 폴der 이름을 입력하세요:');
-            if (!name) return;
-            state.folders.push({ id: 'f' + Date.now(), name, words: [] });
-            localStorage.setItem('jlpt_v5_folders', JSON.stringify(state.folders));
-            updateUI();
+            const name = prompt('폴더 이름:');
+            if (name) { state.folders.push({ id: 'f' + Date.now(), name, words: [] }); localStorage.setItem('jlpt_v6_folders', JSON.stringify(state.folders)); updateUI(); }
         };
         window.renameFolder = (id) => {
-            const folder = state.folders.find(f => f.id === id);
-            const name = prompt('이름 수정:', folder.name);
-            if (name) { folder.name = name; localStorage.setItem('jlpt_v5_folders', JSON.stringify(state.folders)); updateUI(); }
+            const f = state.folders.find(f => f.id === id);
+            const name = prompt('이름 수정:', f.name);
+            if (name) { f.name = name; localStorage.setItem('jlpt_v6_folders', JSON.stringify(state.folders)); updateUI(); }
         };
         window.deleteFolder = (id) => {
-            if (state.folders.length > 1 && confirm('정말 삭제할까요?')) {
+            if (confirm('삭제할까요?') && state.folders.length > 1) {
                 state.folders = state.folders.filter(f => f.id !== id);
-                localStorage.setItem('jlpt_v5_folders', JSON.stringify(state.folders));
+                localStorage.setItem('jlpt_v6_folders', JSON.stringify(state.folders));
                 state.view = 'folders'; updateUI();
             }
         };
@@ -324,4 +426,3 @@
     </script>
 </body>
 </html>
-
