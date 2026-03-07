@@ -10,9 +10,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "API Key Error", detail: "환경 변수 설정이 필요합니다." });
   }
 
-  const systemInstruction = "Professional Japanese tutor. Generate exactly 20 high-frequency JLPT vocabulary words. Output strictly in JSON format.";
-  // 예문을 2개씩 생성하도록 쿼리 수정
-  const userQuery = `Generate 20 random high-frequency words for JLPT N${level || 2}. Include 'kanji', 'kana', 'korean_meaning', 'part_of_speech', and an 'examples' array containing 2 objects with 'jp' and 'kr' fields. Return as a clean JSON array.`;
+  // 무작위성을 높이기 위한 타임스탬프 기반 시드 텍스트 생성
+  const randomSeed = Date.now().toString().slice(-4);
+  
+  const systemInstruction = `Professional Japanese tutor. Generate exactly 20 diverse and random JLPT vocabulary words. Avoid repeating only the most common ones; ensure a wide variety. Output strictly in JSON format.`;
+  
+  const userQuery = `Generate 20 random JLPT N${level || 2} words. 
+  Each object must include:
+  - 'kanji', 'kana', 'korean_meaning', 'part_of_speech'
+  - 'examples': array of 2 {jp, kr}
+  - 'synonyms': array of {word, meaning} (up to 3)
+  - 'antonyms': array of {word, meaning} (up to 3)
+  Use random seed hint: ${randomSeed}. Return as a clean JSON array.`;
 
   const fetchWithRetry = async (model, retries = 3, backoff = 2000) => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
