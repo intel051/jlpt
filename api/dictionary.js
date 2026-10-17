@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+// Node.js 22 provides fetch natively.
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

@@ -125,7 +125,7 @@
         // ------------------------------------------
 
         // Gemini API Configuration
-        const API_KEY = "AIzaSyDfpal-sPS5EeCLYrvmeVnc_sA69L_EQ8M"; // Canvas 환경에서 자동 주입됨
+        const API_KEY = ''; // 서버 환경변수 사용 // Canvas 환경에서 자동 주입됨
         const API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
         const MAX_RETRIES = 3;
         const INITIAL_BACKOFF_MS = 1000;
@@ -485,7 +485,7 @@
         async function fetchWithRetry(payload, retries = MAX_RETRIES) {
              for (let i = 0; i < retries; i++) {
                 try {
-                    const apiUrl = `${API_URL_BASE}?key=${API_KEY}`;
+                    const apiUrl = '/api/legacy-generate';
                     const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

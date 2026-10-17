@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090d16">
+  <meta name="description" content="JLPT 어휘를 수집하고 플래시카드와 퀴즈로 학습하는 개인 단어장">
+  <title>JLPT Master</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-jp.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js" crossorigin></script>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;font-family:'Pretendard JP','Pretendard',sans-serif;background:#080c15;color:#f8fafc;-webkit-tap-highlight-color:transparent}ruby{ruby-position:over}rt{font-size:.55em;color:#a5b4fc}ruby{line-height:2.5}dialog::backdrop{background:#000b}main,article{overflow-wrap:anywhere}button:disabled{cursor:not-allowed}.face>div{min-height:0}.back>div:nth-child(2){overflow-y:auto;max-height:270px}.mesh{position:fixed;inset:0;z-index:-1;background:radial-gradient(circle at 12% 18%,#4f46e548,transparent 32%),radial-gradient(circle at 88% 72%,#9333ea38,transparent 35%),radial-gradient(circle at 52% 45%,#0284c72b,transparent 40%)}.glass{background:#ffffff0a;border:1px solid #ffffff18;box-shadow:0 18px 48px #0005;backdrop-filter:blur(20px)}.input{background:#020617a8;border:1px solid #ffffff1f;color:white}.input:focus{outline:2px solid #818cf8;outline-offset:1px}.card-stage{perspective:1200px}.card-inner{transform-style:preserve-3d;transition:transform .45s cubic-bezier(.2,.8,.2,1)}.flipped{transform:rotateY(180deg)}.face{backface-visibility:hidden;-webkit-backface-visibility:hidden}.back{transform:rotateY(180deg)}button:focus-visible{outline:2px solid #a5b4fc;outline-offset:3px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body><div class="mesh"></div><div id="root"></div>
+<script type="text/babel">
+const {useCallback,useEffect,useMemo,useRef,useState}=React;
+const K={words:'jlpt_words_v2',marks:'jlpt_marks_v2',sets:'jlpt_sets_v2'};
+const read=(k,fallback)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??fallback}catch{return fallback}};
+const uid=(p)=>`${p}_${Date.now()}_${globalThis.crypto?.randomUUID?.().slice(0,8)||Math.random().toString(36).slice(2,10)}`;
+const Icon=({n,size=20})=>{const p={cards:'M4 5h12v14H4z M8 1h12v14',book:'M4 3h6a3 3 0 013 3v15a3 3 0 00-3-3H4z M20 3h-4a3 3 0 00-3 3v15a3 3 0 013-3h4z',folder:'M3 6h7l2 2h9v11H3z',quiz:'M9 9a3 3 0 116 0c0 2-3 2-3 5 M12 18h.01',download:'M12 3v12m-4-4 4 4 4-4 M4 20h16',star:'M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z',volume:'M4 10h4l5-4v12l-5-4H4z M17 9a4 4 0 010 6',search:'M20 20l-4-4m2-5a7 7 0 11-14 0 7 7 0 0114 0',plus:'M12 5v14M5 12h14',trash:'M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7',check:'M5 12l4 4L19 6',x:'M6 6l12 12M18 6L6 18',chev:'M9 18l6-6-6-6',spark:'M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z'};return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={p[n]||p.spark}/></svg>};
+
+function useToast(){const [toast,setToast]=useState('');const timer=useRef();const show=useCallback(msg=>{clearTimeout(timer.current);setToast(msg);timer.current=setTimeout(()=>setToast(''),2800)},[]);useEffect(()=>()=>clearTimeout(timer.current),[]);return [toast,show]}
+async function fetchJson(url,ms=10000){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(url,{signal:c.signal});if(!r.ok)throw Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(t)}}
+
+
+const cleanText=v=>typeof v==='string'?v.trim():Array.isArray(v)?v.filter(x=>typeof x==='string').map(x=>x.trim()).filter(Boolean).join('; '):'';
+const validMeaning=v=>{const t=cleanText(v);return /^(JLPT N[1-5] (vocabulary|Word|어휘|단어)|뜻 정보 없음)$/i.test(t)?'':t};
+const isKorean=t=>/[가-힣]/.test(t||'');
+function migrateWord(w){
+ const en=validMeaning(w.meaning_en), kr=validMeaning(w.meaning_kr);
+ const generated=[w.kanji+'の使い方を練習しましょう。',w.kanji+'を勉強します。',w.kanji+'の勉強をします。',w.kanji+'（'+w.furigana+'）の適切な用法を習得しましょう。'].includes(w.example_jp);
+ return {...w,meaning_en:en,meaning_kr:isKorean(kr)?kr:'',
+ translation_status:isKorean(kr)?(w.translation_status||'legacy'):(en?'failed':'missing'),
+ example_jp:generated?'':cleanText(w.example_jp),example_kr:generated?'':cleanText(w.example_kr)};
+}
+async function translate(text){
+ text=validMeaning(text);
+ if(!text)return {meaning_kr:'',translation_status:'missing'};
+ try{
+ const d=await fetchJson('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q='+encodeURIComponent(text),7000);
+ const kr=Array.isArray(d?.[0])?d[0].map(x=>typeof x?.[0]==='string'?x[0]:'').join('').trim():'';
+ if(!isKorean(kr))throw Error('한국어 번역 없음');
+ return {meaning_kr:kr,translation_status:'machine'};
+ }catch{return {meaning_kr:'',translation_status:'failed'}}
+}
+const meaningLabel=w=>w.meaning_kr||(w.translation_status==='missing'?'뜻 정보 없음':'한국어 번역 필요');
+function shuffle(items){const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function createQuestions(words){
+ const seen=new Set();const distinct=words.filter(w=>{const k=cleanText(w.meaning_kr);if(!k||seen.has(k))return false;seen.add(k);return true});
+ return shuffle(distinct).slice(0,10).map(target=>({target,options:shuffle([target,...shuffle(distinct.filter(w=>w.id!==target.id)).slice(0,3)])}));
+}
+
+
+const corpusCache=new Map();
+async function getCorpus(level){
+ if(corpusCache.has(level))return corpusCache.get(level);
+ const pending=fetchJson('https://jlpt-vocab-api.vercel.app/api/words/all?level='+level,15000).then(d=>{
+ const a=Array.isArray(d)?d:d?.words;
+ if(!Array.isArray(a)||!a.length)throw Error('단어 데이터가 비어 있습니다.');
+ return a.filter(x=>x&&typeof x==='object');
+ }).catch(e=>{corpusCache.delete(level);throw e});
+ corpusCache.set(level,pending);return pending;
+}
+function sanitizeWords(value){
+ if(!Array.isArray(value))return [];
+ const ids=new Set();
+ return value.filter(w=>w&&typeof w.id==='string'&&!ids.has(w.id)&&typeof w.kanji==='string'&&w.kanji.trim()&&(ids.add(w.id),true)).map(w=>({...migrateWord(w),kanji:w.kanji.trim(),furigana:cleanText(w.furigana),romaji:cleanText(w.romaji),mastery:Math.max(0,Math.min(5,Math.floor(Number(w.mastery)||0)))}));
+}
+function sanitizeMarks(value){return Array.isArray(value)?[...new Set(value.filter(x=>typeof x==='string'))]:[]}
+function sanitizeSets(value){const ids=new Set();return Array.isArray(value)?value.filter(s=>s&&typeof s.id==='string'&&typeof s.name==='string'&&!ids.has(s.id)&&(ids.add(s.id),true)).map(s=>({...s,wordIds:sanitizeMarks(s.wordIds)})):[]}
+function useSaved(key,value){
+ const [failed,setFailed]=useState(false);
+ useEffect(()=>{try{localStorage.setItem(key,JSON.stringify(value));setFailed(false)}catch{setFailed(true)}},[key,value]);
+ return failed;
+}
+function ExampleText({word}){
+ const tokens=word.example_tokens;
+ if(Array.isArray(tokens)&&tokens.length&&tokens.every(t=>t&&typeof t.text==='string'&&typeof t.reading==='string')&&tokens.map(t=>t.text).join('')===word.example_jp)
+ return <>{tokens.map((t,i)=>t.reading?<ruby key={i}>{t.text}<rp>（</rp><rt>{t.reading}</rt><rp>）</rp></ruby>:<React.Fragment key={i}>{t.text}</React.Fragment>)}</>;
+ return <>{word.example_jp||'아래 버튼으로 예문을 만들어 보세요.'}</>;
+}
+function App(){
+ const [words,setWords]=useState(()=>{return sanitizeWords(read(K.words,[]))}); const [marks,setMarks]=useState(()=>sanitizeMarks(read(K.marks,[]))); const [sets,setSets]=useState(()=>sanitizeSets(read(K.sets,[])));
+ const requestLock=useRef(false);
+ const exampleLock=useRef(false),appToken=useRef('');
+ const [exampleBusy,setExampleBusy]=useState('');
+ const generateExample=async word=>{
+ if(exampleLock.current)return;exampleLock.current=true;setExampleBusy(word.id);
+ const c=new AbortController(),timer=setTimeout(()=>c.abort(),55000);
+ try{
+ const response=await fetch('/api/example',{method:'POST',signal:c.signal,headers:{'Content-Type':'application/json',...(appToken.current?{'x-app-token':appToken.current}:{})},body:JSON.stringify({word:word.kanji,reading:word.furigana,meaning_en:word.meaning_en||'',meaning_kr:word.meaning_kr||'',level:word.category||'N2'})});
+ if(response.status===401){const token=window.prompt('예문 생성 비밀번호(APP_ACCESS_TOKEN)를 입력해 주세요.');if(token){appToken.current=token;show('비밀번호를 입력했습니다. 예문 생성 버튼을 다시 눌러주세요.')}return;}
+ let result;try{result=await response.json()}catch{throw Error('Vercel 서버 API를 찾지 못했습니다. 배포 설정을 확인해 주세요.')}
+ if(!response.ok)throw Error(result.error||'예문 생성에 실패했습니다.');
+ if(typeof result.example_jp!=='string'||!Array.isArray(result.example_tokens))throw Error('예문 응답 형식이 올바르지 않습니다.');
+ setWords(p=>p.map(w=>w.id===word.id?{...w,example_jp:result.example_jp,example_kr:result.example_kr,example_tokens:result.example_tokens,example_source:'gemini',example_generated_at:result.example_generated_at}:w));show('후리가나가 포함된 예문을 저장했습니다.');
+ }catch(e){show(e.name==='AbortError'?'예문 생성 시간이 초과됐습니다.':e.message)}
+ finally{clearTimeout(timer);exampleLock.current=false;setExampleBusy('')}
+ };
+ const [tab,setTab]=useState('cards'); const [filter,setFilter]=useState('all'); const [busy,setBusy]=useState(false); const [level,setLevel]=useState(2); const [limit,setLimit]=useState(10); const [toast,show]=useToast();
+ const wordsSaveFailed=useSaved(K.words,words),marksSaveFailed=useSaved(K.marks,marks),setsSaveFailed=useSaved(K.sets,sets);
+ useEffect(()=>()=>{window.speechSynthesis?.cancel()},[]);
+ useEffect(()=>{if(filter!=='all'&&filter!=='marks'&&!sets.some(s=>s.id===filter))setFilter('all')},[sets,filter]);
+ const filtered=useMemo(()=>filter==='all'?words:filter==='marks'?words.filter(w=>marks.includes(w.id)):words.filter(w=>sets.find(s=>s.id===filter)?.wordIds.includes(w.id)),[words,marks,sets,filter]);
+ const collect=async(random=false)=>{
+ if(requestLock.current)return;requestLock.current=true;setBusy(true);
+ const requestedLevel=level, requestedLimit=limit;show('단어를 가져오는 중…');
+ try{
+ const list=await getCorpus(requestedLevel);
+ const known=new Set(words.map(w=>w.kanji.trim()));
+ const unique=shuffle(list.filter(x=>{const k=cleanText(x?.word||x?.kanji);if(!k||known.has(k))return false;known.add(k);return true})).slice(0,random?1:requestedLimit);
+ let added=0,failed=0;
+ for(let i=0;i<unique.length;i+=3){
+ const batch=await Promise.all(unique.slice(i,i+3).map(async x=>{
+ const en=validMeaning(x.meaning);const tr=await translate(en);if(!tr.meaning_kr)failed++;
+ // No invented example: only accept explicit Japanese/Korean source fields.
+ return {id:uid('word'),kanji:cleanText(x.word||x.kanji),furigana:cleanText(x.furigana)||cleanText(x.word||x.kanji),romaji:cleanText(x.romaji),meaning_en:en,...tr,category:'N'+requestedLevel,mastery:0,example_jp:cleanText(x.example_jp),example_kr:cleanText(x.example_kr)};
+ }));
+ added+=batch.length;setWords(p=>{const existing=new Set(p.map(w=>w.kanji));return [...batch.filter(w=>!existing.has(w.kanji)),...p]});
+ }
+ show(added?added+'개 추가 · 뜻 확인 필요 '+failed+'개':'새로운 중복 없는 단어가 없습니다.');
+ }catch(e){show(e.name==='AbortError'?'요청 시간이 초과됐습니다.':'단어를 가져오지 못했습니다. 다시 시도해 주세요.')}
+ finally{requestLock.current=false;setBusy(false)}
+ };
+ const retryTranslations=async()=>{
+ if(requestLock.current)return;
+ const candidates=words.filter(w=>validMeaning(w.meaning_en)&&!isKorean(w.meaning_kr)&&w.translation_status!=='manual'&&!w.id.startsWith('custom'));
+ if(!candidates.length)return show('다시 번역할 영어 원문이 없습니다.');
+ requestLock.current=true;setBusy(true);let success=0;
+ try{
+ for(let i=0;i<candidates.length;i+=3){
+ const results=await Promise.all(candidates.slice(i,i+3).map(async w=>({id:w.id,...await translate(w.meaning_en)})));
+ success+=results.filter(r=>r.translation_status==='machine').length;
+ setWords(p=>p.map(w=>{const r=results.find(r=>r.id===w.id);return r?.translation_status==='machine'?{...w,...r}:w}));
+ show('뜻 재번역 '+Math.min(i+3,candidates.length)+' / '+candidates.length);
+ }
+ show('재번역 완료: '+success+' / '+candidates.length+'개. 기존 학습 기록은 유지됩니다.');
+ }finally{requestLock.current=false;setBusy(false)}
+ };
+ const toggleMark=id=>setMarks(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]); const mastery=(id,d)=>setWords(p=>p.map(w=>w.id===id?{...w,mastery:Math.max(0,Math.min(5,(w.mastery||0)+d))}:w));
+ const speak=t=>{if(!('speechSynthesis'in window))return show('이 브라우저는 음성 재생을 지원하지 않습니다.');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ja-JP';u.rate=.86;speechSynthesis.speak(u)};
+ const add=input=>{const w={...input,kanji:cleanText(input.kanji),meaning_kr:cleanText(input.meaning_kr)};if(!w.kanji||!w.meaning_kr){show('표기와 뜻을 입력해 주세요.');return false}if(words.some(x=>x.kanji===w.kanji)){show('이미 등록된 단어입니다.');return false}setWords(p=>[{...w,id:uid('custom'),mastery:0,category:'직접 추가'},...p]);show('단어를 저장했습니다.');return true};
+ const remove=id=>{setWords(p=>p.filter(w=>w.id!==id));setMarks(p=>p.filter(x=>x!==id));setSets(p=>p.map(s=>({...s,wordIds:s.wordIds.filter(x=>x!==id)})));show('단어를 삭제했습니다.')};
+ const nav=[['cards','cards','플래시카드'],['list','book','단어장'],['sets','folder','세트'],['quiz','quiz','퀴즈'],['fetch','download','가져오기']];
+ return <div className="min-h-screen md:flex pb-20 md:pb-0">
+  <aside className="hidden md:flex w-64 h-screen sticky top-0 glass border-y-0 border-l-0 p-5 flex-col"><Brand/><nav className="mt-8 space-y-2">{nav.map(x=><Nav key={x[0]} active={tab===x[0]} onClick={()=>setTab(x[0])} icon={x[1]}>{x[2]}</Nav>)}</nav><div className="mt-auto rounded-2xl bg-white/5 p-4"><p className="text-sm text-slate-400">보관 단어 <b className="text-emerald-300">{words.length}개</b></p><button onClick={()=>collect()} disabled={busy} className="mt-3 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-bold disabled:opacity-50">{busy?'수집 중…':'단어 추가 수집'}</button></div></aside>
+  <header className="md:hidden sticky top-0 z-30 glass border-x-0 border-t-0 p-4 flex justify-between"><Brand/><button onClick={()=>collect()} disabled={busy} className="rounded-xl bg-indigo-600 px-3 text-sm font-bold">{busy?'수집 중':'API 수집'}</button></header>
+  <main className="w-full min-w-0 max-w-6xl mx-auto p-4 md:p-8">{(wordsSaveFailed||marksSaveFailed||setsSaveFailed)&&<p role="alert" className="mb-4 rounded-xl bg-rose-950 p-3 text-rose-200">브라우저에 저장하지 못했습니다. 저장 공간과 브라우저 설정을 확인해 주세요. 현재 변경 사항은 새로고침하면 사라질 수 있습니다.</p>}<div className="mb-3 flex flex-wrap items-center gap-3 text-sm"><button disabled={busy} onClick={retryTranslations} className="rounded-xl bg-indigo-600/30 px-4 py-2 disabled:opacity-50">{busy?'처리 중…':'번역 실패한 단어 재시도'}</button><span className="text-slate-400">기계번역은 오역될 수 있습니다. 예문이 없으면 임의로 만들지 않습니다.</span></div><div className="mb-3 flex gap-4 text-sm text-indigo-300"><a href="/legacy">기존 단어장</a><a href="/dict">사전</a><a href="/auth">로그인 학습</a></div><Filters words={words} marks={marks} sets={sets} filter={filter} setFilter={setFilter}/>{tab==='cards'&&<Cards generateExample={generateExample} exampleBusy={exampleBusy} words={filtered} marks={marks} toggleMark={toggleMark} mastery={mastery} speak={speak} collect={collect} busy={busy}/>} {tab==='list'&&<List key={filter} words={filtered} marks={marks} sets={sets} toggleMark={toggleMark} setSets={setSets} speak={speak} add={add} remove={remove}/>} {tab==='sets'&&<Sets sets={sets} setSets={setSets} words={words} study={id=>{setFilter(id);setTab('cards')}}/>} {tab==='quiz'&&<Quiz words={filtered.filter(w=>isKorean(w.meaning_kr))} mastery={mastery} speak={speak}/>} {tab==='fetch'&&<Fetcher level={level} setLevel={setLevel} limit={limit} setLimit={setLimit} collect={collect} busy={busy} total={words.length}/>}</main>
+  <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 glass bg-slate-950/90 border-x-0 border-b-0 flex justify-around px-1 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2">{nav.map(x=><button key={x[0]} onClick={()=>setTab(x[0])} className={`w-16 flex flex-col items-center gap-1 text-[11px] ${tab===x[0]?'text-indigo-300':'text-slate-500'}`}><Icon n={x[1]} size={19}/>{x[2]}</button>)}</nav>
+  {toast&&<div role="status" aria-live="polite" className="fixed top-20 md:top-6 right-4 z-50 glass rounded-2xl px-4 py-3 text-sm max-w-sm">{toast}</div>}
+ </div>}
+const Brand=()=> <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-fuchsia-500 grid place-items-center font-black">N2</div><div><h1 className="font-extrabold leading-tight">JLPT Master</h1><p className="text-xs text-emerald-300">나만의 일본어 단어장</p></div></div>;
+const Nav=({active,onClick,icon,children})=><button onClick={onClick} className={`w-full flex gap-3 items-center rounded-xl px-4 py-3 text-sm font-bold ${active?'bg-indigo-600 text-white':'text-slate-400 hover:bg-white/5'}`}><Icon n={icon}/>{children}</button>;
+function Filters({words,marks,sets,filter,setFilter}){return <div className="glass rounded-2xl p-3 mb-6 flex gap-2 overflow-x-auto"><Chip a={filter==='all'} on={()=>setFilter('all')}>전체 {words.length}</Chip><Chip a={filter==='marks'} on={()=>setFilter('marks')}>★ 저장 {marks.length}</Chip>{sets.map(s=><Chip key={s.id} a={filter===s.id} on={()=>setFilter(s.id)}>{s.name} {s.wordIds.length}</Chip>)}</div>};const Chip=({a,on,children})=><button onClick={on} className={`shrink-0 rounded-xl border px-3 py-2 text-sm ${a?'bg-indigo-600 border-indigo-400':'bg-white/5 border-white/10 text-slate-300'}`}>{children}</button>;
+function Empty({collect,busy}){return <section className="glass rounded-3xl text-center p-10 max-w-xl mx-auto"><Icon n="spark" size={42}/><h2 className="mt-4 text-xl font-bold">학습할 단어가 없습니다</h2><p className="mt-2 text-sm text-slate-400">API에서 단어를 가져오거나 단어장에서 직접 추가해 주세요.</p><button disabled={busy} onClick={()=>collect()} className="mt-6 rounded-xl bg-indigo-600 px-5 py-3 font-bold disabled:opacity-50">{busy?'가져오는 중…':'단어 가져오기'}</button></section>}
+function Cards({generateExample,exampleBusy,words,marks,toggleMark,mastery,speak,collect,busy}){const [i,setI]=useState(0),[flip,setFlip]=useState(false);const key=words.map(w=>w.id).join('|');useEffect(()=>{setI(v=>Math.min(v,Math.max(0,words.length-1)));setFlip(false)},[key]);if(!words.length)return <Empty collect={collect} busy={busy}/>;const w=words[i]||words[0];const move=d=>{setFlip(false);setI(v=>(v+d+words.length)%words.length)};return <div className="max-w-xl mx-auto"><div className="flex justify-between text-sm text-slate-400 mb-3"><span>{i+1} / {words.length}</span><span>숙달도 {'●'.repeat(w.mastery||0)}{'○'.repeat(5-(w.mastery||0))}</span></div><div className="card-stage h-[410px]"><div className={`card-inner relative w-full h-full ${flip?'flipped':''}`}><section inert={flip?"":undefined} aria-hidden={flip} onClick={()=>setFlip(true)} className="face absolute inset-0 glass rounded-3xl p-6 flex flex-col cursor-pointer"><div className="flex justify-between"><span className="text-sm text-indigo-300">{w.category}</span><div className="flex gap-2"><button aria-label="발음 듣기" onClick={e=>{e.stopPropagation();speak(w.kanji)}} className="p-2 rounded-xl bg-white/10"><Icon n="volume"/></button><button aria-label="북마크" onClick={e=>{e.stopPropagation();toggleMark(w.id)}} className={`p-2 rounded-xl ${marks.includes(w.id)?'text-amber-300 bg-amber-400/10':'bg-white/10'}`}><Icon n="star"/></button></div></div><div className="m-auto text-center max-h-64 overflow-y-auto"><p className="text-slate-400">{w.furigana} {w.romaji&&`(${w.romaji})`}</p><h2 lang="ja" className="text-5xl font-black my-4 break-words">{w.kanji}</h2><p className="text-xl font-bold text-emerald-300">{meaningLabel(w)}</p>{w.meaning_en&&w.meaning_en!==w.meaning_kr&&<p className="text-sm text-slate-500 mt-2">{w.meaning_en}</p>}</div><button onClick={e=>{e.stopPropagation();setFlip(true)}} className="text-center text-sm text-indigo-300">예문과 암기 평가 보기</button></section><section inert={!flip?"":undefined} aria-hidden={!flip} onClick={()=>setFlip(false)} className="face back absolute inset-0 glass rounded-3xl p-6 flex flex-col cursor-pointer"><div className="flex justify-between"><button onClick={e=>{e.stopPropagation();setFlip(false)}} className="text-purple-300 font-bold">앞면 보기</button><button disabled={!w.example_jp} aria-label="예문 발음 듣기" onClick={e=>{e.stopPropagation();w.example_jp&&speak(w.example_jp)}} className="p-2 rounded-xl bg-white/10"><Icon n="volume"/></button></div><div className="m-auto rounded-2xl bg-black/20 p-5 w-full"><p lang="ja" className="text-lg leading-relaxed"><ExampleText word={w}/></p><p className="mt-3 text-emerald-300">{w.example_kr||(w.example_jp?'예문 해석 없음':'')}</p><button disabled={!!exampleBusy} onClick={e=>{e.stopPropagation();generateExample(w)}} className="mt-3 rounded-xl bg-indigo-600 px-3 py-2 text-sm disabled:opacity-50">{exampleBusy===w.id?'예문 생성 중…':w.example_jp?'예문 다시 만들기':'AI 예문 + 후리가나 만들기'}</button>{w.example_source==='gemini'&&<p className="mt-2 text-xs text-slate-400">AI 생성 예문 · 읽기와 해석을 확인해 주세요.</p>}</div><div className="flex gap-3"><button onClick={e=>{e.stopPropagation();mastery(w.id,-1)}} className="flex-1 py-3 rounded-xl bg-rose-500/15 text-rose-300">어려움</button><button onClick={e=>{e.stopPropagation();mastery(w.id,1)}} className="flex-1 py-3 rounded-xl bg-emerald-500/15 text-emerald-300">알고 있어요</button></div></section></div></div><div className="flex gap-3 mt-4"><button onClick={()=>move(-1)} className="glass rounded-xl py-3 flex-1">이전</button><button onClick={()=>move(1)} className="rounded-xl py-3 flex-1 bg-indigo-600 font-bold">다음</button></div></div>}
+function List({words,marks,sets,toggleMark,setSets,speak,add,remove}){const [q,setQ]=useState(''),[modal,setModal]=useState(false),[page,setPage]=useState(1);useEffect(()=>setPage(1),[q]);useEffect(()=>setPage(p=>Math.min(p,Math.max(1,Math.ceil(words.length/36)))),[words.length]);const shown=useMemo(()=>{const n=q.toLowerCase().trim();return !n?words:words.filter(w=>[w.kanji,w.furigana,w.meaning_kr,w.meaning_en].some(x=>(x||'').toLowerCase().includes(n)))},[words,q]);return <div><div className="flex flex-col sm:flex-row gap-3 mb-5"><label className="relative flex-1"><span className="sr-only">단어 검색</span><span className="absolute left-4 top-3.5 text-slate-500"><Icon n="search"/></span><input value={q} onChange={e=>setQ(e.target.value)} className="input w-full rounded-2xl py-3 pl-12 pr-4" placeholder="한자, 읽기, 뜻 검색"/></label><button onClick={()=>setModal(true)} className="rounded-2xl bg-indigo-600 px-5 py-3 font-bold flex justify-center gap-2"><Icon n="plus"/>직접 추가</button></div>{!shown.length?<p className="glass rounded-2xl p-10 text-center text-slate-400">검색 결과가 없습니다.</p>:<div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{shown.slice((page-1)*36,page*36).map(w=><article key={w.id} className="glass rounded-2xl p-5"><div className="flex justify-between gap-3"><div><small className="text-indigo-300">{w.category}</small><p className="text-sm text-slate-400">{w.furigana}</p><h3 lang="ja" className="text-2xl font-bold">{w.kanji}</h3></div><div className="flex gap-1"><button aria-label="발음" onClick={()=>speak(w.kanji)} className="p-2"><Icon n="volume"/></button><button aria-label="북마크" onClick={()=>toggleMark(w.id)} className={marks.includes(w.id)?'text-amber-300':''}><Icon n="star"/></button><button aria-label="삭제" onClick={()=>confirm(`‘${w.kanji}’을 삭제할까요?`)&&remove(w.id)} className="p-2 text-rose-300"><Icon n="trash"/></button></div></div><p className="mt-3 text-emerald-300 font-bold">{meaningLabel(w)}</p><div className="flex flex-wrap gap-1 mt-4">{sets.map(s=><button key={s.id} onClick={()=>setSets(p=>p.map(x=>x.id===s.id?{...x,wordIds:x.wordIds.includes(w.id)?x.wordIds.filter(id=>id!==w.id):[...x.wordIds,w.id]}:x))} className={`text-xs rounded-lg px-2 py-1 ${s.wordIds.includes(w.id)?'bg-indigo-600':'bg-white/10 text-slate-400'}`}>{s.name}</button>)}</div></article>)}</div>}{shown.length>36&&<div className="flex items-center justify-center gap-4 mt-5"><button disabled={page<=1} onClick={()=>setPage(p=>p-1)} className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-30">이전</button><span>{page} / {Math.ceil(shown.length/36)} · {shown.length}개</span><button disabled={page*36>=shown.length} onClick={()=>setPage(p=>p+1)} className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-30">다음</button></div>}{modal&&<WordModal close={()=>setModal(false)} add={add}/>}</div>}
+function WordModal({close,add}){const dialog=useRef(null);useEffect(()=>{const el=dialog.current;el.showModal();return()=>el.close()},[]);const [f,setF]=useState({kanji:'',furigana:'',meaning_kr:'',example_jp:'',example_kr:''});const change=e=>setF({...f,[e.target.name]:e.target.value});const submit=e=>{e.preventDefault();if(add({...f,furigana:f.furigana||f.kanji,meaning_en:'',example_jp:f.example_jp.trim(),example_kr:f.example_kr.trim(),translation_status:'manual'}))close()};return <dialog ref={dialog} onCancel={e=>{e.preventDefault();close()}} aria-labelledby="word-modal-title" className="bg-transparent p-0 max-w-[calc(100%-2rem)] w-full max-h-[90dvh] rounded-3xl" style={{width:448}}><form onSubmit={submit} className="glass bg-slate-950 w-full max-w-md rounded-3xl p-6"><div className="flex justify-between"><h2 id="word-modal-title" className="text-xl font-bold">단어 직접 추가</h2><button type="button" aria-label="닫기" onClick={close}><Icon n="x"/></button></div>{[['kanji','한자 / 표기 *'],['furigana','후리가나'],['meaning_kr','한국어 뜻 *'],['example_jp','일본어 예문'],['example_kr','예문 해석']].map(([n,l])=><label key={n} className="block mt-4 text-sm text-slate-300">{l}<input required={n==='kanji'||n==='meaning_kr'} name={n} value={f[n]} onChange={change} className="input mt-1 w-full rounded-xl p-3"/></label>)}<button className="w-full mt-6 rounded-xl bg-indigo-600 py-3 font-bold">저장</button></form></dialog>}
+function Sets({sets,setSets,words,study}){const [name,setName]=useState('');const create=e=>{e.preventDefault();if(!name.trim())return;setSets(p=>[...p,{id:uid('set'),name:name.trim(),wordIds:[]}]);setName('')};return <div><form onSubmit={create} className="glass rounded-2xl p-5 flex gap-3"><input value={name} onChange={e=>setName(e.target.value)} className="input rounded-xl p-3 flex-1 min-w-0" placeholder="새 세트 이름"/><button className="rounded-xl bg-indigo-600 px-5 font-bold">생성</button></form><div className="grid md:grid-cols-2 gap-4 mt-5">{sets.map(s=><article key={s.id} className="glass rounded-2xl p-5"><div className="flex justify-between"><h3 className="font-bold text-lg">{s.name}</h3><button aria-label="세트 삭제" onClick={()=>confirm('이 세트를 삭제할까요?')&&setSets(p=>p.filter(x=>x.id!==s.id))} className="text-rose-300"><Icon n="trash"/></button></div><p className="text-sm text-slate-400 mt-1">{s.wordIds.length}개 단어</p><div className="my-4 h-28 overflow-auto rounded-xl bg-black/20 p-3 text-sm">{words.filter(w=>s.wordIds.includes(w.id)).map(w=><p key={w.id} className="py-1">{w.kanji} · <span className="text-emerald-300">{meaningLabel(w)}</span></p>)}{!s.wordIds.length&&<p className="text-slate-500">단어장에서 단어를 추가해 주세요.</p>}</div><button disabled={!s.wordIds.length} onClick={()=>study(s.id)} className="w-full rounded-xl bg-indigo-600 py-3 font-bold disabled:opacity-40">이 세트 학습하기</button></article>)}</div></div>}
+function Quiz({words,mastery,speak}){if(new Set(words.map(w=>cleanText(w.meaning_kr)).filter(Boolean)).size<4)return <div className="glass rounded-3xl p-10 text-center max-w-xl mx-auto"><h2 className="text-xl font-bold">퀴즈에는 서로 다른 한국어 뜻이 4개 이상 필요합니다.</h2><p className="text-slate-400 mt-2">단어를 더 가져온 뒤 다시 시작해 주세요.</p></div>;return <QuizRound key={words.map(w=>w.id).join('|')} words={words} mastery={mastery} speak={speak}/>}
+function QuizRound({words,mastery,speak}){const [questions,setQuestions]=useState(()=>createQuestions(words));const pool=questions.map(q=>q.target);const [i,setI]=useState(0),[picked,setPicked]=useState(null),[score,setScore]=useState(0),[done,setDone]=useState(false);const target=pool[i];const options=questions[i].options;const answerLock=useRef(false);const choose=o=>{if(answerLock.current)return;answerLock.current=true;setPicked(o.id);const ok=o.id===target.id;if(ok)setScore(s=>s+1);mastery(target.id,ok?1:-1)};if(done)return <div className="glass rounded-3xl p-10 text-center max-w-xl mx-auto"><h2 className="text-2xl font-bold">퀴즈 완료</h2><p className="text-5xl font-black text-indigo-300 my-5">{score} / {pool.length}</p><button onClick={()=>{setQuestions(createQuestions(words));answerLock.current=false;setI(0);setPicked(null);setScore(0);setDone(false)}} className="rounded-xl bg-indigo-600 px-6 py-3 font-bold">다시 풀기</button></div>;return <div className="max-w-xl mx-auto"><p className="text-sm text-slate-400 mb-3">문제 {i+1} / {pool.length} · 점수 {score}</p><section className="glass rounded-3xl p-8 text-center"><p className="text-sm text-slate-400">{target.furigana}</p><h2 lang="ja" className="text-5xl font-black my-5">{target.kanji}</h2><button onClick={()=>speak(target.kanji)} className="rounded-xl bg-white/10 p-3"><Icon n="volume"/></button></section><div className="space-y-3 mt-4">{options.map(o=><button key={o.id} disabled={!!picked} onClick={()=>choose(o)} className={`w-full rounded-2xl border p-4 text-left font-bold ${picked?(o.id===target.id?'bg-emerald-600 border-emerald-400':o.id===picked?'bg-rose-600 border-rose-400':'glass border-white/10'):'glass border-white/10 hover:border-indigo-400'}`}>{o.meaning_kr}</button>)}</div>{picked&&<button onClick={()=>{if(i+1===pool.length)setDone(true);else{answerLock.current=false;setI(x=>x+1);setPicked(null)}}} className="w-full rounded-xl bg-indigo-600 py-3 mt-4 font-bold">{i+1===pool.length?'결과 보기':'다음 문제'}</button>}</div>}
+function Fetcher({level,setLevel,limit,setLimit,collect,busy,total}){return <div className="glass rounded-3xl p-6 md:p-8 max-w-2xl mx-auto"><div className="text-center"><div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-indigo-500 grid place-items-center"><Icon n="download" size={28}/></div><h2 className="text-2xl font-black mt-4">JLPT 단어 가져오기</h2><p className="text-slate-400 mt-1">현재 {total}개 보관 중</p></div><h3 className="mt-7 mb-2 text-sm font-bold">레벨</h3><div className="grid grid-cols-5 gap-2">{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setLevel(n)} className={`rounded-xl py-3 ${level===n?'bg-indigo-600':'bg-white/5'}`}>N{n}</button>)}</div><h3 className="mt-6 mb-2 text-sm font-bold">가져올 개수</h3><div className="grid grid-cols-4 gap-2">{[5,10,20,30].map(n=><button key={n} onClick={()=>setLimit(n)} className={`rounded-xl py-3 ${limit===n?'bg-indigo-600':'bg-white/5'}`}>{n}개</button>)}</div><div className="grid sm:grid-cols-2 gap-3 mt-7"><button disabled={busy} onClick={()=>collect(false)} className="rounded-xl bg-indigo-600 py-4 font-bold disabled:opacity-50">{busy?'처리 중…':`N${level} ${limit}개 가져오기`}</button><button disabled={busy} onClick={()=>collect(true)} className="rounded-xl bg-emerald-600/20 text-emerald-300 py-4 font-bold disabled:opacity-50">랜덤 1개 가져오기</button></div><p className="text-xs text-slate-500 mt-5 leading-relaxed">외부 어휘·번역 서비스 상태에 따라 가져오기가 잠시 실패할 수 있습니다. 저장한 학습 데이터는 현재 브라우저에 보관됩니다.</p></div>}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script></body></html>

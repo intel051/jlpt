@@ -1,23 +1,12 @@
 {
   "version": 2,
+  "framework": null,
+  "outputDirectory": "public",
   "cleanUrls": true,
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/test",
-      "destination": "/test.html"
-    },
-    {
-      "source": "/",
-      "destination": "/Dict.html"
-    },
-    {
-      "source": "/((?!api/|test|Dict).*)",
-      "destination": "/index.html"
+  "functions": {
+    "api/example.js": {
+      "maxDuration": 60
     }
-  ]
+  }
 }
 

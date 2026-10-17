@@ -5,6 +5,13 @@
   "main": "api/dictionary.js",
   "dependencies": {
     "node-fetch": "^2.6.7"
+  },
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js"
   }
 }
 
