@@ -6,6 +6,9 @@
   "functions": {
     "api/example.js": {
       "maxDuration": 60
+    },
+    "api/translate.js": {
+      "maxDuration": 60
     }
   }
 }

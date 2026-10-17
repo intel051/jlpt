@@ -1,3 +1,14 @@
+## OpenAI 뜻 번역 및 예문 생성
+Vercel 환경변수에 OPENAI_API_KEY를 등록하고 재배포하세요. OPENAI_MODEL 기본값은 gpt-5.6-luna입니다.
+새 단어는 일본어 표기, 읽기, 영어 뜻을 함께 보내 한국어로 번역합니다.
+'기존 뜻 AI 재번역'은 직접 등록한 단어 및 OpenAI로 이미 번역한 단어를 제외하고 뜻을 업데이트합니다.
+예문 생성은 OPENAI_API_KEY가 있으면 OpenAI를 사용하고, 없으면 기존 Gemini 설정을 사용합니다.
+후리가나 토큰과 문장의 일치 여부를 서버에서 검증합니다. AI 번역과 읽기는 의미적으로 틀릴 수 있습니다.
+결과는 현재 브라우저에 저장되며 재생성 버튼을 누르면 추가 API 호출이 발생합니다.
+APP_ACCESS_TOKEN은 /api/translate 및 /api/example을 보호하는 선택 비밀번호입니다.
+API 키는 클라이언트 HTML이나 GitHub에 넣지 마세요. 노출된 키는 폐기하고 새 키를 등록하세요.
+실제 API 호출은 별도 사용 요금이 발생합니다.
+
 # JLPT Master · Vercel + Gemini
 
 ## 배포
@@ -38,3 +49,4 @@ Vercel 문서: https://vercel.com/docs/functions/runtimes/node-js
 ## 정리 내역
 미사용 test.html, 전용 api/generate.js, HTML에 키를 삽입하던 GitHub Pages workflow를 제거했습니다. Git 이력에서 복구 가능합니다. 과거 Pages 배포에 실제 키가 포함되었다면 Google에서 키를 교체하세요. 과거 배포는 이번 커밋으로 삭제되지 않습니다.
 기존 api/vocab.js와 api/dictionary.js는 보존했습니다. APP_ACCESS_TOKEN은 새 /api/example에만 적용됩니다.
+
