@@ -115,8 +115,9 @@ function App(){
  const known=new Set(words.map(w=>w.kanji.trim()));
  const unique=shuffle(list.filter(x=>{const k=cleanText(x?.word||x?.kanji);if(!k||known.has(k))return false;known.add(k);return true})).slice(0,random?1:requestedLimit);
  let added=0,failed=0;
- for(let i=0;i<unique.length;i+=3){
- const batch=await Promise.all(unique.slice(i,i+3).map(async x=>{
+ for(let i=0;i<unique.length;i+=1){
+ if(i)await new Promise(resolve=>setTimeout(resolve,1500));
+ const batch=await Promise.all(unique.slice(i,i+1).map(async x=>{
  const en=validMeaning(x.meaning);let tr;
  try{tr=await translate({...x,category:'N'+requestedLevel},appToken.current)}
  catch(e){failed++;tr={meaning_kr:'',translation_status:'failed'};if(e.status===401||e.status===503||e.status===429)throw e;}
@@ -131,15 +132,16 @@ function App(){
  };
  const retryTranslations=async()=>{
  if(requestLock.current)return;
- const candidates=words.filter(w=>w.kanji&&w.translation_source!=='openai'&&w.translation_status!=='manual'&&!w.id.startsWith('custom'));
+ const candidates=words.filter(w=>w.kanji&&!['openai','gemini'].includes(w.translation_source)&&w.translation_status!=='manual'&&!w.id.startsWith('custom'));
  if(!candidates.length)return show('다시 번역할 단어가 없습니다.');
  requestLock.current=true;setBusy(true);let success=0;
  try{
- for(let i=0;i<candidates.length;i+=3){
- const results=await Promise.all(candidates.slice(i,i+3).map(async w=>({id:w.id,...await translate(w,appToken.current)})));
+ for(let i=0;i<candidates.length;i+=1){
+ if(i)await new Promise(resolve=>setTimeout(resolve,1500));
+ const results=await Promise.all(candidates.slice(i,i+1).map(async w=>({id:w.id,...await translate(w,appToken.current)})));
  success+=results.filter(r=>r.translation_status==='machine').length;
  setWords(p=>p.map(w=>{const r=results.find(r=>r.id===w.id);return r?.translation_status==='machine'?{...w,...r}:w}));
- show('뜻 재번역 '+Math.min(i+3,candidates.length)+' / '+candidates.length);
+ show('뜻 재번역 '+Math.min(i+1,candidates.length)+' / '+candidates.length);
  }
  show('재번역 완료: '+success+' / '+candidates.length+'개. 기존 학습 기록은 유지됩니다.');
  }catch(e){if(e.status===401){const token=window.prompt('AI 기능 비밀번호(APP_ACCESS_TOKEN)를 입력해 주세요.');if(token)appToken.current=token;}show(e.message||'번역에 실패했습니다. 기존 뜻은 유지됩니다.')}finally{requestLock.current=false;setBusy(false)}
