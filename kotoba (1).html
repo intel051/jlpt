@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="color-scheme" content="light dark">
+<title>言葉帳 · 일본어 단어장</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{
+  --bg:oklch(98.4% .003 250);--surface:#fff;--ink:oklch(21% .02 255);--sub:oklch(52% .02 255);
+  --line:oklch(92% .006 255);--accent:oklch(54% .11 205);--accent-soft:oklch(95% .03 205);--danger:oklch(56% .18 25);
+  --ease:cubic-bezier(.22,1,.36,1);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:oklch(17% .012 255);--surface:oklch(21% .014 255);--ink:oklch(95% .006 255);--sub:oklch(68% .015 255);
+  --line:oklch(29% .014 255);--accent:oklch(76% .11 200);--accent-soft:oklch(27% .04 205);--danger:oklch(72% .15 25)}
+}
+*{box-sizing:border-box;margin:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;background:var(--bg);color:var(--ink);
+  min-height:100dvh;line-height:1.55;letter-spacing:-.011em;-webkit-font-smoothing:antialiased;
+  padding:max(24px,env(safe-area-inset-top)) 20px max(64px,env(safe-area-inset-bottom))}
+main{max-width:640px;margin-inline:auto}
+button,input,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+
+header{display:flex;align-items:baseline;justify-content:space-between;padding-block:28px 32px}
+h1{font-size:1.5rem;font-weight:700;letter-spacing:-.03em}
+h1 small{font-weight:400;color:var(--sub);font-size:.9rem;margin-left:8px}
+#count{color:var(--sub);font-size:.9rem;font-variant-numeric:tabular-nums}
+
+.tabs{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:14px;background:var(--line);margin-bottom:24px;isolation:isolate}
+.tabs button{padding:10px;border-radius:10px;font-weight:600;font-size:.95rem;color:var(--sub);transition:color .3s var(--ease)}
+.tabs button[aria-selected=true]{color:var(--ink)}
+.pill{position:absolute;inset:4px auto 4px 4px;width:calc(50% - 4px);background:var(--surface);border-radius:10px;z-index:-1;
+  box-shadow:0 1px 2px #0001,0 4px 12px -4px #0002;transition:translate .45s var(--ease)}
+.tabs:has(button:nth-child(2)[aria-selected=true]) .pill{translate:100% 0}
+
+.field{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:6px 6px 6px 18px;
+  transition:border-color .3s,box-shadow .4s var(--ease)}
+.field:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in oklch,var(--accent) 16%,transparent)}
+.field svg{flex:none;width:20px;height:20px;stroke:var(--sub);fill:none;stroke-width:2;stroke-linecap:round}
+.field input{flex:1;min-width:0;border:0;background:none;outline:0;font-size:1.25rem;padding:12px 0}
+.field input::placeholder{color:color-mix(in oklch,var(--sub) 70%,transparent)}
+.hint{color:var(--sub);font-size:.85rem;margin:12px 4px 24px}
+
+.btn{padding:10px 16px;border-radius:12px;font-weight:600;font-size:.9rem;background:var(--ink);color:var(--bg);
+  transition:scale .25s var(--ease),opacity .2s}
+.btn:active{scale:.96}.btn.ghost{background:var(--accent-soft);color:var(--accent)}
+.btn.plain{background:none;color:var(--sub);font-weight:500}
+
+ul{list-style:none;padding:0;display:grid;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 18px 16px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;
+  animation:rise .6s var(--ease) both;animation-delay:calc(var(--i,0)*50ms);transition:border-color .3s,box-shadow .4s var(--ease),translate .4s var(--ease)}
+@media (hover:hover){.card:hover{border-color:color-mix(in oklch,var(--accent) 40%,var(--line));translate:0 -2px;box-shadow:0 10px 30px -14px #0003}}
+@keyframes rise{from{opacity:0;translate:0 14px;filter:blur(4px)}}
+.card.out{animation:out .4s var(--ease) forwards}
+@keyframes out{to{opacity:0;scale:.96;translate:0 -6px}}
+.w{font-size:1.75rem;font-weight:700;letter-spacing:-.03em;line-height:1.25;word-break:keep-all}
+.r{color:var(--sub);font-size:.95rem}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tag{font-size:.75rem;padding:2px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.tag.mute{background:var(--line);color:var(--sub);font-weight:500}
+.det{grid-column:1/-1;margin-top:10px;padding-top:12px;border-top:1px dashed var(--line);display:grid;gap:14px;transition:filter .4s var(--ease)}
+.mean{display:grid;gap:4px;font-size:.95rem}
+.mean span{color:var(--sub);margin-right:8px;font-variant-numeric:tabular-nums}
+.mean b{font-weight:600;outline:0;border-radius:6px;padding:0 2px}
+.mean b[contenteditable]:focus{background:var(--bg)}
+.mean em{font-style:normal;color:var(--sub);font-size:.85rem;margin-left:4px}
+.auto{color:var(--sub);font-size:.75rem;margin-top:2px}
+.exs{display:grid;gap:10px}
+.ex{display:grid;gap:2px;padding-left:12px;border-left:2px solid var(--accent-soft);animation:rise .5s var(--ease) both}
+button.ja{text-align:left;font-size:1rem;font-weight:500;line-height:1.5}
+.ex .ko{color:var(--sub);font-size:.88rem}
+.exsk{height:44px;border-radius:10px;background:linear-gradient(100deg,var(--line) 30%,color-mix(in oklch,var(--line) 40%,var(--surface)) 50%,var(--line) 70%) 0 0/300% 100%;animation:sh 1.3s linear infinite}
+#trbar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--accent-soft);color:var(--accent);padding:10px 10px 10px 16px;border-radius:14px;margin:0 0 20px}
+#trbar[hidden]{display:none}#trbar .btn{background:var(--accent);color:var(--bg);white-space:nowrap}
+.acts{display:flex;gap:6px;align-items:flex-start}
+.ico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--sub);transition:background .25s,color .25s,scale .25s var(--ease)}
+.ico:hover{background:var(--line);color:var(--ink)}.ico:active{scale:.88}
+.ico svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ico.on{background:var(--accent);color:var(--bg)}
+.ico.on svg path{fill:currentColor}
+.ico.del:hover{color:var(--danger)}
+.note{grid-column:1/-1;margin-top:8px;font-size:.88rem;color:var(--sub);outline:0;border-radius:8px;padding:4px 8px;margin-inline:-8px;min-height:1.9em}
+.note:empty::before{content:"메모 추가";opacity:.6}.note:focus{background:var(--bg);color:var(--ink)}
+
+.study .det,.study .note{filter:blur(7px)}
+.study .card:focus-within .det,.study .card:focus-within .note,.study .card.show .det,.study .card.show .note{filter:none}
+
+.tools{display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.tools .field{flex:1;padding-block:2px}.tools .field input{font-size:1rem;padding-block:10px}
+.switch{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--sub);cursor:pointer;white-space:nowrap;user-select:none}
+.switch input{appearance:none;width:38px;height:22px;border-radius:99px;background:var(--line);position:relative;transition:background .3s;cursor:pointer}
+.switch input::after{content:"";position:absolute;inset:3px auto 3px 3px;aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:translate .35s var(--ease)}
+.switch input:checked{background:var(--accent)}.switch input:checked::after{translate:16px 0}
+
+.empty{text-align:center;color:var(--sub);padding:56px 12px;display:grid;gap:14px;justify-items:center;animation:rise .6s var(--ease) both}
+.empty b{color:var(--ink);font-size:1.05rem;font-weight:600}
+.sk{height:104px;border-radius:18px;background:linear-gradient(100deg,var(--line) 30%,color-mix(in oklch,var(--line) 40%,var(--surface)) 50%,var(--line) 70%) 0 0/300% 100%;animation:sh 1.3s linear infinite}
+@keyframes sh{to{background-position:-300% 0}}
+
+dialog{border:0;border-radius:24px;padding:24px;width:min(440px,calc(100vw - 32px));background:var(--surface);color:var(--ink);margin:auto;
+  box-shadow:0 30px 80px -20px #0006;opacity:0;translate:0 24px;scale:.97;
+  transition:opacity .35s,translate .5s var(--ease),scale .5s var(--ease),overlay .5s allow-discrete,display .5s allow-discrete}
+dialog[open]{opacity:1;translate:0 0;scale:1}
+@starting-style{dialog[open]{opacity:0;translate:0 24px;scale:.97}}
+dialog::backdrop{background:oklch(15% .02 255/0);backdrop-filter:blur(0);transition:background .4s,backdrop-filter .4s,overlay .4s allow-discrete,display .4s allow-discrete}
+dialog[open]::backdrop{background:oklch(15% .02 255/.4);backdrop-filter:blur(6px)}
+@starting-style{dialog[open]::backdrop{background:oklch(15% .02 255/0);backdrop-filter:blur(0)}}
+dialog h2{font-size:1.2rem;margin-bottom:16px}
+form{display:grid;gap:12px}
+label{display:grid;gap:6px;font-size:.85rem;color:var(--sub);font-weight:500}
+label input,label textarea{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:11px 14px;font-size:1rem;color:var(--ink);outline:0;resize:none;field-sizing:content;min-height:46px;transition:border-color .25s,box-shadow .3s}
+label input:focus,label textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in oklch,var(--accent) 16%,transparent)}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+
+#toast{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));translate:-50% 0;background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:99px;font-size:.9rem;font-weight:500;
+  opacity:0;pointer-events:none;transition:opacity .3s,translate .5s var(--ease)}
+#toast.on{opacity:1;translate:-50% -8px}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.3s}
+@media (prefers-reduced-motion:reduce){*,::before,::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
+
+/* ---------- responsive ---------- */
+html{-webkit-tap-highlight-color:transparent}
+button,.card,label{touch-action:manipulation}
+input[type=search]{-webkit-appearance:none;appearance:none}
+input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-search-decoration{-webkit-appearance:none;display:none}
+.clr{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--line);transition:opacity .25s,scale .4s var(--ease)}
+.clr svg{width:14px;height:14px;stroke:var(--sub);stroke-width:2.4}
+.clr:active{scale:.86}
+.field:has(input:placeholder-shown) .clr{opacity:0;scale:.5;pointer-events:none}
+.tools{flex-wrap:wrap}.tools .field{flex:1 1 240px}
+.switch{flex:none;margin-left:auto}.switch input{flex:none}.switch small{display:none}
+.w,button.ja{overflow-wrap:anywhere}
+.dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+dialog h2{margin:0}.dh .ico{margin-right:-8px}
+@media (hover:hover){.study .card:hover .det,.study .card:hover .note{filter:none}}
+@media (pointer:coarse){.ico{width:44px;height:44px}.tabs button{padding:13px 10px}.clr{width:38px;height:38px}}
+@media (max-width:560px){
+  body{padding-inline:16px}
+  header{padding-block:12px 24px}
+  h1{font-size:1.35rem}h1 small{font-size:.82rem}
+  .field{padding-left:16px}.field input{font-size:1.1rem}
+  .tools{gap:10px}.tools .field{flex-basis:100%}
+  .switch{width:100%;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px;color:var(--ink);font-weight:500}
+  .switch small{display:block;color:var(--sub);font-weight:400;font-size:.8rem}
+  .card{padding:16px 14px 14px;border-radius:16px;column-gap:8px}
+  .w{font-size:1.55rem}
+  .acts{gap:0;margin-right:-8px}
+  #trbar{flex-wrap:wrap}
+  dialog{margin:auto 0 0;width:100%;max-width:none;max-height:92dvh;overflow:auto;border-radius:24px 24px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));translate:0 100%;scale:1}
+  dialog[open]{translate:0 0}
+  @starting-style{dialog[open]{translate:0 100%;scale:1}}
+  #toast{max-width:calc(100vw - 32px);text-align:center}
+}
+@media (min-width:1000px){
+  main{max-width:960px}
+  .tabs{max-width:360px}
+  #results,#saved{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  .empty{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>言葉帳<small>일본어 단어장</small></h1>
+    <span id="count"></span>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="t-search" aria-selected="true" aria-controls="p-search">검색</button>
+    <button role="tab" id="t-saved" aria-selected="false" aria-controls="p-saved">내 단어장</button>
+    <span class="pill"></span>
+  </nav>
+
+  <section id="p-search" role="tabpanel">
+    <label class="field" style="gap:12px">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="日本語, ひらがな, romaji, English" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" lang="ja"><button type="button" class="clr" aria-label="입력 지우기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </label>
+    <p class="hint">일본어(한자·가나), 로마자, 영어로 검색할 수 있어요. 영어 뜻은 한국어로 자동 번역하고, 예문은 Tatoeba에서 가져와요.</p>
+    <div id="trbar" hidden><span>기기 안에서 번역하면 더 정확하고 빨라요.</span><button class="btn" id="trbtn">번역 켜기</button></div>
+    <ul id="results"></ul>
+    <div style="text-align:center;margin-top:24px"><button class="btn plain" data-manual>찾는 단어가 없나요? 직접 입력</button></div>
+  </section>
+
+  <section id="p-saved" role="tabpanel" hidden>
+    <div class="tools">
+      <label class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="filter" type="search" placeholder="저장한 단어에서 찾기" autocomplete="off"><button type="button" class="clr" aria-label="입력 지우기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></label>
+      <label class="switch"><span>암기 모드<small>뜻과 예문을 가려요</small></span><input type="checkbox" id="study"></label>
+    </div>
+    <ul id="saved"></ul>
+    <div class="row" style="justify-content:space-between;margin-top:24px">
+      <button class="btn plain" id="export">JSON 내보내기</button>
+      <button class="btn ghost" data-manual>직접 추가</button>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <div class="dh"><h2>단어 직접 추가</h2><button type="button" class="ico" id="x" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <form id="form" method="dialog">
+    <label>단어<input name="word" required lang="ja" placeholder="例: 勉強" autocomplete="off"></label>
+    <label>읽는 법<input name="reading" lang="ja" placeholder="べんきょう" autocomplete="off"></label>
+    <label>뜻 (한국어)<textarea name="meaning" required rows="1" placeholder="공부"></textarea></label>
+    <label>메모<textarea name="note" rows="1" placeholder="예문, 헷갈리는 점 등"></textarea></label>
+    <div class="row"><button type="button" class="btn plain" id="cancel">취소</button><button class="btn">저장</button></div>
+  </form>
+</dialog>
+<div id="toast" role="status"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICON = {
+  speak:'<svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  save:'<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>',
+  del:'<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>'
+};
+
+/* ---------- 저장소 ---------- */
+const KEY = 'kotoba:words';
+let words = (() => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } })();
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(words)); } catch {} render(); };
+const same = (a, b) => a.word === b.word && (a.reading || '') === (b.reading || '');
+const isSaved = w => words.some(x => same(x, w));
+
+/* ---------- 사전 API (무료·공개) ---------- */
+const fromJotoba = d => (d.words || []).map(w => ({
+  word: w.reading?.kanji || w.reading?.kana, reading: w.reading?.kana || '',
+  meanings: (w.senses || []).slice(0, 4).map(s => (s.glosses || []).join(', ')),
+  pos: [...new Set((w.senses || []).flatMap(s => (s.pos || []).map(p => typeof p === 'string' ? p : Object.keys(p)[0])))].slice(0, 2).join(', '),
+  jlpt: w.jlpt_lvl ? 'N' + w.jlpt_lvl : '', common: !!w.common
+}));
+const fromJisho = d => (d.data || []).map(w => {
+  const j = w.japanese?.[0] || {};
+  return { word: j.word || j.reading, reading: j.reading || '',
+    meanings: (w.senses || []).slice(0, 4).map(s => (s.english_definitions || []).join(', ')),
+    pos: [...new Set((w.senses || []).flatMap(s => s.parts_of_speech || []))].slice(0, 2).join(', '),
+    jlpt: (w.jlpt?.[0] || '').replace('jlpt-n', 'N').toUpperCase(), common: !!w.is_common };
+});
+const providers = [
+  async (q, signal) => {            // 1순위: Jotoba (CORS 허용)
+    const r = await fetch('https://jotoba.de/api/search/words', { method:'POST', signal,
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({ query:q, language:'English', no_english:false }) });
+    if (!r.ok) throw new Error(r.status); return fromJotoba(await r.json());
+  },
+  async (q, signal) => {            // 2순위: Jisho (CORS 프록시 경유)
+    const url = 'https://jisho.org/api/v1/search/words?keyword=' + encodeURIComponent(q);
+    const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { signal });
+    if (!r.ok) throw new Error(r.status); return fromJisho(await r.json());
+  }
+];
+async function lookup(q, signal) {
+  let failed = 0;
+  for (const p of providers) {
+    try { const list = (await p(q, signal)).filter(x => x.word); if (list.length) return { list }; }
+    catch (e) { if (e.name === 'AbortError') throw e; failed++; }
+  }
+  return { list: [], failed: failed === providers.length };
+}
+
+/* ---------- 한국어 번역 · 예문 ---------- */
+const key = w => w.word + '|' + (w.reading || '');
+const gaveUp = new Set(), busy = new Set(), cache = new Map();
+let tr;
+async function getTr() {                      // Chrome 내장 Translator (기기 내 번역)
+  if (tr) return tr;
+  if (!('Translator' in self)) return null;
+  try {
+    const o = { sourceLanguage: 'en', targetLanguage: 'ko' };
+    const a = await Translator.availability(o);
+    if (a === 'available') return tr = await Translator.create(o);
+    if (a !== 'unavailable') $('#trbar').hidden = false;   // 모델 다운로드엔 클릭이 필요해요
+  } catch {}
+  return null;
+}
+$('#trbtn').onclick = async e => {
+  const b = e.currentTarget; b.disabled = true;
+  try {
+    tr = await Translator.create({ sourceLanguage: 'en', targetLanguage: 'ko',
+      monitor: m => m.addEventListener('downloadprogress', p => b.textContent = `받는 중 ${Math.round(p.loaded * 100)}%`) });
+    $('#trbar').hidden = true; toast('기기 내 번역을 켰어요');
+  } catch { b.disabled = false; b.textContent = '다시 시도'; }
+};
+async function translate(text) {              // 실패 시 MyMemory(무료 번역 API)로 대체
+  if (cache.has(text)) return cache.get(text);
+  let out = '';
+  try {
+    const t = await getTr();
+    if (t) out = await t.translate(text);
+    else {
+      const r = await fetch('https://api.mymemory.translated.net/get?langpair=en|ko&q=' + encodeURIComponent(text));
+      out = (await r.json()).responseData?.translatedText || '';
+      if (/MYMEMORY WARNING|QUERY LENGTH|INVALID/i.test(out)) out = '';
+    }
+  } catch {}
+  if (out) cache.set(text, out);
+  return out;
+}
+async function fetchExamples(w) {             // Tatoeba: 한국어 번역 우선, 없으면 영어 번역을 한국어로
+  const get = async lang => {
+    const p = new URLSearchParams({ lang: 'jpn', q: `"${w.word.replace(/"/g, '')}"`, sort: 'relevance', limit: '3',
+      word_count: '-40', is_unapproved: 'no', 'trans:lang': lang, 'trans:is_unapproved': 'no' });
+    const r = await fetch('https://api.tatoeba.org/v1/sentences?' + p);
+    if (!r.ok) throw new Error(r.status);
+    return ((await r.json()).data || []).map(s => ({ ja: s.text, t: (s.translations || []).flat()[0]?.text || '' })).filter(x => x.t);
+  };
+  try {
+    let list = await get('kor'), auto = false;
+    if (!list.length) { list = await get('eng'); auto = true; }
+    w.examples = await Promise.all(list.map(async x => ({ ja: x.ja, ko: auto ? await translate(x.t) : x.t, en: auto ? x.t : '', auto })));
+  } catch {}
+}
+async function translateMeanings(w) {
+  const ko = await Promise.all(w.meanings.slice(0, 4).map(translate));
+  if (ko.some(Boolean)) { w.ko = w.meanings.map((_, i) => ko[i] || ''); w.koAuto = true; }
+}
+async function enrich(w) {
+  const k = key(w);
+  if (busy.has(k) || gaveUp.has(k)) return false;
+  busy.add(k);
+  try {
+    await Promise.all([w.ko === undefined && translateMeanings(w), w.examples === undefined && fetchExamples(w)]);
+  } finally { busy.delete(k); }
+  if (w.ko === undefined || w.examples === undefined) gaveUp.add(k);
+  return true;
+}
+const quiet = () => { try { localStorage.setItem(KEY, JSON.stringify(words)); } catch {} };
+const io = new IntersectionObserver(es => es.forEach(async e => {   // 화면에 보이는 카드만 불러와요
+  if (!e.isIntersecting) return;
+  io.unobserve(e.target);
+  const c = e.target, saved = !!c.dataset.id;
+  const w = saved ? words.find(x => x.id === c.dataset.id) : current[c.dataset.i];
+  if (!w || !(await enrich(w))) return;
+  if (!saved) { const s = words.find(x => same(x, w)); if (s) { s.ko ??= w.ko; s.koAuto ??= w.koAuto; s.examples ??= w.examples; quiet(); } }
+  else quiet();
+  const d = c.querySelector('.det'); if (d && c.isConnected) d.innerHTML = details(w, saved);
+}), { rootMargin: '200px' });
+const watch = ul => ul.querySelectorAll('.card').forEach(c => io.observe(c));
+
+/* ---------- 렌더링 ---------- */
+const tags = w => `<div class="tags">${w.jlpt ? `<span class="tag">${esc(w.jlpt)}</span>` : ''}${w.common ? '<span class="tag mute">자주 쓰임</span>' : ''}${w.pos ? `<span class="tag mute">${esc(w.pos)}</span>` : ''}</div>`;
+const details = (w, edit) => {
+  const rows = w.meanings.map((m, i) => {
+    const k = w.ko?.[i], main = k || m, sub = k && k !== m ? m : '';
+    return `<div><span>${i + 1}</span><b ${edit ? `contenteditable="plaintext-only" data-a="ko" data-i="${i}"` : ''}>${esc(main)}</b>${sub ? `<em>${esc(sub)}</em>` : ''}</div>`;
+  }).join('');
+  const ex = w.examples === undefined ? (gaveUp.has(key(w)) ? '' : '<div class="exsk"></div>')
+    : w.examples.length ? `<div class="exs">${w.examples.map((e, i) => `<div class="ex" style="animation-delay:${i * 70}ms"><button class="ja" data-a="speakex" lang="ja">${esc(e.ja)}</button><div class="ko">${esc(e.ko || e.en)}${e.auto ? ' <span class="auto">자동번역</span>' : ''}</div></div>`).join('')}</div>` : '';
+  return `<div class="mean">${rows}${w.koAuto ? '<small class="auto">한국어 뜻은 자동번역이에요</small>' : ''}</div>${ex}`;
+};
+const speakBtn = `<button class="ico" data-a="speak" aria-label="발음 듣기">${ICON.speak}</button>`;
+
+let current = [];
+function paintResults(list) {
+  current = list;
+  $('#results').innerHTML = list.map((w, i) => `
+    <li class="card" style="--i:${i}" data-i="${i}">
+      <div><div class="w" lang="ja">${esc(w.word)}</div><div class="r" lang="ja">${esc(w.reading)}</div>${tags(w)}</div>
+      <div class="acts">${speakBtn}<button class="ico ${isSaved(w) ? 'on' : ''}" data-a="save" aria-label="저장" aria-pressed="${isSaved(w)}">${ICON.save}</button></div>
+      <div class="det">${details(w, false)}</div></li>`).join('');
+  watch($('#results'));
+}
+function message(title, sub, manual = true) {
+  $('#results').innerHTML = `<li class="empty"><b>${title}</b><span>${sub}</span>${manual ? '<button class="btn ghost" data-manual>직접 입력하기</button>' : ''}</li>`;
+}
+function render() {
+  $('#count').textContent = words.length ? `${words.length}개 저장됨` : '';
+  const f = $('#filter').value.trim().toLowerCase();
+  const list = words.filter(w => !f || [w.word, w.reading, ...w.meanings, w.note].join(' ').toLowerCase().includes(f));
+  $('#saved').innerHTML = list.length ? list.map((w, i) => `
+    <li class="card" style="--i:${Math.min(i, 8)}" data-id="${w.id}" tabindex="0">
+      <div><div class="w" lang="ja">${esc(w.word)}</div><div class="r" lang="ja">${esc(w.reading)}</div>${tags(w)}</div>
+      <div class="acts">${speakBtn}<button class="ico del" data-a="del" aria-label="삭제">${ICON.del}</button></div>
+      <div class="det">${details(w, true)}</div><div class="note" contenteditable="plaintext-only" data-a="note" role="textbox" aria-label="메모">${esc(w.note || '')}</div></li>`).join('')
+    : `<li class="empty"><b>${words.length ? '일치하는 단어가 없어요' : '아직 저장한 단어가 없어요'}</b><span>${words.length ? '다른 검색어로 찾아보세요.' : '검색에서 단어를 저장하거나 직접 추가해 보세요.'}</span></li>`;
+  watch($('#saved'));
+  if ($('#results').querySelector('.card')) $('#results').querySelectorAll('.card').forEach(c => {
+    const on = isSaved(current[c.dataset.i]); const b = c.querySelector('[data-a=save]');
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+  });
+}
+
+/* ---------- 검색 ---------- */
+let timer, ctrl;
+$('#q').addEventListener('input', e => {
+  clearTimeout(timer); ctrl?.abort();
+  const q = e.target.value.trim();
+  if (!q) { $('#results').innerHTML = ''; return; }
+  $('#results').innerHTML = '<li class="sk"></li><li class="sk" style="animation-delay:.15s"></li><li class="sk" style="animation-delay:.3s"></li>';
+  timer = setTimeout(async () => {
+    ctrl = new AbortController();
+    try {
+      const { list, failed } = await lookup(q, ctrl.signal);
+      if (list.length) paintResults(list);
+      else if (failed) message('사전에 연결하지 못했어요', '네트워크를 확인하거나 직접 입력해서 저장할 수 있어요.');
+      else message('검색 결과가 없어요', '철자를 바꿔 보거나 직접 입력해서 저장하세요.');
+    } catch (e) { if (e.name !== 'AbortError') message('오류가 발생했어요', '잠시 후 다시 시도해 주세요.'); }
+  }, 380);
+});
+
+/* ---------- 액션 ---------- */
+function speak(text) {
+  if (!('speechSynthesis' in window)) return toast('이 브라우저는 음성을 지원하지 않아요');
+  speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'ja-JP'; u.rate = .85; speechSynthesis.speak(u);
+}
+let tt; function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 1800); }
+
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-manual]')) { $('#form').reset(); if ($('#q').value && $('#p-search').hidden === false) $('#form').word.value = $('#q').value.trim(); $('#dlg').showModal(); return; }
+  const card = e.target.closest('.card'); const act = e.target.closest('[data-a]')?.dataset.a;
+  if (!card) return;
+  if (act === 'speakex') return speak(e.target.closest('[data-a]').textContent);
+  if (card.dataset.id) {
+    const w = words.find(x => x.id === card.dataset.id);
+    if (act === 'speak') speak(w.reading || w.word);
+    else if (act === 'del') { card.classList.add('out'); setTimeout(() => { words = words.filter(x => x.id !== w.id); persist(); toast('삭제했어요'); }, 350); }
+    else if (card.closest('.study')) card.classList.toggle('show');
+  } else if (card.dataset.i != null) {
+    const w = current[card.dataset.i];
+    if (act === 'speak') speak(w.reading || w.word);
+    if (act === 'save') {
+      if (isSaved(w)) { words = words.filter(x => !same(x, w)); toast('저장을 취소했어요'); }
+      else { words.unshift({ ...w, id: crypto.randomUUID(), note: '', added: Date.now() }); toast('단어를 저장했어요'); }
+      persist();
+    }
+  }
+});
+document.addEventListener('focusout', e => {
+  const a = e.target.dataset?.a; if (a !== 'note' && a !== 'ko') return;
+  const w = words.find(x => x.id === e.target.closest('.card').dataset.id), t = e.target.textContent.trim();
+  if (!w) return;
+  if (a === 'note' && w.note !== t) { w.note = t; quiet(); }
+  if (a === 'ko') { const i = +e.target.dataset.i; w.ko ??= w.meanings.map(() => ''); if (w.ko[i] !== t) { w.ko[i] = t; w.koAuto = false; quiet(); } }
+});
+
+/* ---------- 직접 입력 ---------- */
+$('#cancel').onclick = () => $('#dlg').close();
+$('#dlg').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+$('#form').addEventListener('submit', e => {
+  const f = e.target; const w = { id: crypto.randomUUID(), word: f.word.value.trim(), reading: f.reading.value.trim(),
+    meanings: f.meaning.value.split('\n').map(s => s.trim()).filter(Boolean), ko: null, pos: '', jlpt: '', common: false, note: f.note.value.trim(), added: Date.now() };
+  if (!w.word || !w.meanings.length) return;
+  w.ko = w.meanings; w.koAuto = false;
+  if (isSaved(w)) toast('이미 저장된 단어예요'); else { words.unshift(w); toast('단어를 저장했어요'); persist(); }
+});
+
+/* ---------- 탭 · 필터 · 암기 모드 ---------- */
+function tab(name) {
+  const go = () => {
+    for (const n of ['search', 'saved']) {
+      $('#t-' + n).setAttribute('aria-selected', n === name); $('#p-' + n).hidden = n !== name;
+    }
+  };
+  document.startViewTransition ? document.startViewTransition(go) : go();
+}
+$('#t-search').onclick = () => tab('search');
+$('#t-saved').onclick = () => tab('saved');
+$('#filter').addEventListener('input', render);
+$('#study').addEventListener('change', e => $('#saved').classList.toggle('study', e.target.checked));
+$('#export').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(words, null, 2)], { type: 'application/json' }));
+  a.download = 'kotoba-words.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+
+$('#x').onclick = () => $('#dlg').close();
+document.querySelectorAll('.clr').forEach(b => b.onclick = () => {
+  const i = b.parentElement.querySelector('input'); i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); i.focus();
+});
+document.addEventListener('keydown', e => {            // 데스크톱: / 로 검색창 포커스
+  const a = document.activeElement;
+  if (e.key === '/' && !/INPUT|TEXTAREA/.test(a.tagName) && !a.isContentEditable && !$('#dlg').open) {
+    e.preventDefault(); ($('#p-search').hidden ? $('#filter') : $('#q')).focus();
+  }
+});
+render();
+if (matchMedia('(hover:hover)').matches) $('#q').focus();   // 모바일은 키보드가 바로 뜨지 않게
+</script>
+</body>
+</html>
