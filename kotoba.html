@@ -9,13 +9,13 @@
 <style>
 :root{
   --bg:oklch(98.4% .003 250);--surface:#fff;--ink:oklch(21% .02 255);--sub:oklch(52% .02 255);
-  --line:oklch(92% .006 255);--accent:oklch(54% .11 205);--accent-soft:oklch(95% .03 205);--danger:oklch(56% .18 25);
+  --line:oklch(92% .006 255);--accent:#4371f0;--accent-soft:#ebf0fe;--danger:oklch(56% .18 25);
   --ease:cubic-bezier(.22,1,.36,1);
   color-scheme:light dark;
 }
 @media (prefers-color-scheme:dark){
   :root{--bg:oklch(17% .012 255);--surface:oklch(21% .014 255);--ink:oklch(95% .006 255);--sub:oklch(68% .015 255);
-  --line:oklch(29% .014 255);--accent:oklch(76% .11 200);--accent-soft:oklch(27% .04 205);--danger:oklch(72% .15 25)}
+  --line:oklch(29% .014 255);--accent:#6f8ff5;--accent-soft:#1d284b;--danger:oklch(72% .15 25)}
 }
 *{box-sizing:border-box;margin:0}
 html{-webkit-text-size-adjust:100%}
@@ -113,9 +113,9 @@ dialog[open]::backdrop{background:oklch(15% .02 255/.4);backdrop-filter:blur(6px
 @starting-style{dialog[open]::backdrop{background:oklch(15% .02 255/0);backdrop-filter:blur(0)}}
 dialog h2{font-size:1.2rem;margin-bottom:16px}
 form{display:grid;gap:12px}
-label{display:grid;gap:6px;font-size:.85rem;color:var(--sub);font-weight:500}
-label input,label textarea{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:11px 14px;font-size:1rem;color:var(--ink);outline:0;resize:none;field-sizing:content;min-height:46px;transition:border-color .25s,box-shadow .3s}
-label input:focus,label textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in oklch,var(--accent) 16%,transparent)}
+dialog label{display:grid;gap:6px;font-size:.85rem;color:var(--sub);font-weight:500}
+dialog label input,dialog label textarea{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:11px 14px;font-size:1rem;color:var(--ink);outline:0;resize:none;field-sizing:content;min-height:46px;transition:border-color .25s,box-shadow .3s}
+dialog label input:focus,dialog label textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in oklch,var(--accent) 16%,transparent)}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
 
 #toast{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));translate:-50% 0;background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:99px;font-size:.9rem;font-weight:500;
@@ -162,6 +162,15 @@ dialog h2{margin:0}.dh .ico{margin-right:-8px}
   .tabs{max-width:360px}
   #results,#saved{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
   .empty{grid-column:1/-1}
+}
+.switch input{width:44px;height:26px;padding:0;border:0;min-height:0;flex:none}
+.switch input::after{inset:3px auto 3px 3px}
+.switch input:checked::after{translate:18px 0}
+@media (max-width:560px){
+  .tools{gap:6px}
+  .switch{padding:4px 2px;background:none;border:0;border-radius:0;font-weight:500;color:var(--ink)}
+  .switch span{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:8px}
+  .switch small{display:inline;margin:0}
 }
 </style>
 </head>
